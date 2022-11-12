@@ -13,6 +13,7 @@ COPY --from=build-env /app/out ./
 
 RUN useradd -ms /bin/bash moduleuser
 RUN mkdir /etc/huaweisolar && chown moduleuser /etc/huaweisolar
+COPY --from=build-env /app/out/appsettings.json /etc/huaweisolar/appsettings.json
 USER moduleuser
 
 ENTRYPOINT ["dotnet", "HuaweiSolar.dll"]
