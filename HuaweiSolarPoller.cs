@@ -240,7 +240,7 @@ namespace HuaweiSolar
                         devTypeId = DeviceInformation.devTypeId
                     };
                     var powerData = await PostDataRequestAsync(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(req), CancellationTokenSource.Token);
-                    var success = Utility.WasSuccessMessage(powerData, out string json, out _, CancellationTokenSource.Token);
+                    var success = Utility.WasSuccessMessage(powerData, out string json, out BaseResponse response, CancellationTokenSource.Token);
                     if (success) 
                     { 
                         var respObj = JsonConvert.DeserializeObject<DevRealKpiResponse>(json);
@@ -261,13 +261,20 @@ namespace HuaweiSolar
                         else 
                         {
                             logger.LogWarning("The power data returned from Huawei's Fusion Solar was not valid.");
+                            await this.chargeHqSender.SendErrorData("Huawei's FusionSolar power data was not in an expected format");
                         }
+                    }
+                    else
+                    {
+                        logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {response.failCode}, message: {response.message}");
+                        await this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {response.failCode}, message: {response.message}");
                     }
                 }
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "An exception was caught while polling for power data to send to ChargeHQ.");
+                await this.chargeHqSender.SendErrorData("An error occurred while polling the Huawei FusionSolar API");
             }
         }
 

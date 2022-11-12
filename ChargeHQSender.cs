@@ -3,6 +3,8 @@ using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
+using Newtonsoft.Json;
+
 using HuaweiSolar.Models;
 using HuaweiSolar.Models.Configuration;
 
@@ -41,7 +43,7 @@ namespace HuaweiSolar
             var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(smp));
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                logger.LogDebug("Successfully sent error data to ChargeHQ Solar Push API.");
+                logger.LogInformation("Successfully sent error data to ChargeHQ Solar Push API.");
                 return true;
             }
             else
@@ -55,15 +57,41 @@ namespace HuaweiSolar
 
         public async Task<bool> SendData(DevRealKpiResponse data)
         {
-            var smp = new SiteMeterPush
+            bool isShutdown = data.data[0].dataItemMap.inverter_state != 512;
+            SiteMeterPush smp;
+            if (isShutdown)
             {
-                apiKey = ChargeHQSettings.SiteId.ToString(),
-                tsms = data.parameters.currentTime,
-                sitesMeters = new SiteMeter
+                smp = new SiteMeterPush
                 {
-                    production_kw = data.data[0].dataItemMap.active_power
-                }
-            };
+                    apiKey = ChargeHQSettings.SiteId.ToString(),
+                    tsms = data.parameters.currentTime,
+                    sitesMeters = new SiteMeter
+                    {
+                        production_kw = data.data[0].dataItemMap.active_power
+                    }
+                };
+            }
+            else 
+            {
+                var consumption_watts = data.data[0].dataItemMap.ab_u * data.data[0].dataItemMap.a_i * data.data[0].dataItemMap.power_factor;
+                var consumption_kW = consumption_watts / 1000;
+                var net_import_kW = consumption_kW - data.data[0].dataItemMap.active_power;
+                var yieldToday = data.data[0].dataItemMap.day_cap;
+                smp = new SiteMeterPush
+                {
+                    apiKey = ChargeHQSettings.SiteId.ToString(),
+                    tsms = data.parameters.currentTime,
+                    sitesMeters = new SiteMeter
+                    {
+                        production_kw = data.data[0].dataItemMap.active_power,
+                        net_import_kw = net_import_kW,
+                        consumption_kw = consumption_kW,
+                        exported_kwh = yieldToday
+                    }
+                };
+            }
+            
+            logger.LogDebug("ChargeHQ Site Meter Push: {0}", JsonConvert.SerializeObject(smp, Formatting.None));
             
             var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(smp));
             if (response.StatusCode == HttpStatusCode.OK)
