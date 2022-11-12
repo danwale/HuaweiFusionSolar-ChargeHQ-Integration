@@ -2,7 +2,7 @@ version: "3"
 
 services:
   huawei-solar:
-    image: danwale/huaweifusionsolar2chargehq:1
+    image: danwale/huaweifusionsolar2chargehq:1.0.0
     restart: always
     environment:
       - HUAWEI__BASEURI=https://intl.fusionsolar.huawei.com/
