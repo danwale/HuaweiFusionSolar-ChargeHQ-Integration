@@ -61,7 +61,7 @@ namespace HuaweiSolar
             Console.WriteLine("ConfigureServices called");
             IConfiguration configuration = new ConfigurationBuilder()
                                                     .SetBasePath(configPath)
-                                                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                                                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
                                                     .AddEnvironmentVariables()
                                                     .Build();
             serviceCollection.AddSingleton(configuration);
