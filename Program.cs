@@ -21,11 +21,11 @@ namespace HuaweiSolar
             // Share the cancellation token source
             var cts = new CancellationTokenSource();
 
-            // Start the poller and pass it the cancellation token source
-            
+            // Initialse the poller passing it the Cancellation Token Source
             var huaweiSolarPoller = ServiceProvider.GetRequiredService<HuaweiSolarPoller>()
                 .InitialiseAsync(cts).GetAwaiter().GetResult();
 
+            // Start the poller
             huaweiSolarPoller.Start();
 
             // Wait until the app unloads or is cancelled
@@ -33,6 +33,7 @@ namespace HuaweiSolar
             Console.CancelKeyPress += (sender, cpe) => cts.Cancel();
             WhenCancelled(cts.Token).Wait();
 
+            // Stop the poller as the service is stopping
             huaweiSolarPoller.Stop();
 
             Log.Logger.Information("Huawei Solar Poller has exited.");
@@ -50,9 +51,16 @@ namespace HuaweiSolar
 
         private static void ConfigureServices(ServiceCollection serviceCollection)
         {
+            string configPath = Environment.GetEnvironmentVariable("ConfigPath");
+            if (string.IsNullOrWhiteSpace(configPath))
+            {
+                configPath = "/etc/huaweisolar";
+            }
+            Console.WriteLine("Reading appsettings.json from: {0}", configPath);
+
             Console.WriteLine("ConfigureServices called");
             IConfiguration configuration = new ConfigurationBuilder()
-                                                    .SetBasePath(Environment.CurrentDirectory)
+                                                    .SetBasePath(configPath)
                                                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
                                                     .AddEnvironmentVariables()
                                                     .Build();
