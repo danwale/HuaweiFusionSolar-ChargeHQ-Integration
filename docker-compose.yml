@@ -2,7 +2,7 @@ version: "3"
 
 services:
   huawei-solar:
-    image: danwale/huaweifusionsolar2chargehq:1.0.0
+    image: danwale/huaweifusionsolar2chargehq:latest
     restart: always
     environment:
       - HUAWEI__BASEURI=https://intl.fusionsolar.huawei.com/
@@ -11,6 +11,7 @@ services:
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
       - CHARGEHQ__SITEID= #insert your ChargeHQ Site ID here
+      - SERILOG__MINIMUMLEVEL=Information
     volumes:
      - huaweisolar-conf:/etc/huaweisolar
 
