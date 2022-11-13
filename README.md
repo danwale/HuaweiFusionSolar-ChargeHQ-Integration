@@ -1,6 +1,6 @@
 # Huawei Fusion Solar to ChargeHQ Push API Integration Module
 
-![CI Workflow](https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/actions/workflows/docker-image.yml/badge.svg)
+[![Docker Image CI](https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/actions/workflows/docker-image.yml/badge.svg?branch=main)](https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/actions/workflows/docker-image.yml)
 
 [![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/danwale?country.x=AU&locale.x=en_AU) <a href="https://www.buymeacoffee.com/danwale" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 20px !important;width: 105px !important;" ></a>
 
