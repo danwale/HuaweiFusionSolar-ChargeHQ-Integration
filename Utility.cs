@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using System.Text;
 
 using Newtonsoft.Json;
@@ -12,7 +13,7 @@ namespace HuaweiSolar
     {
         public static StringContent GetStringContent(string json)
         {
-            return new StringContent(json, Encoding.UTF8, Constants.APP_JSON);
+            return new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json);
         }
 
         public static StringContent GetStringContent(object obj, Formatting formatOption = Formatting.None)
@@ -22,7 +23,7 @@ namespace HuaweiSolar
             return GetStringContent(json);
         }
 
-        public static string GetJsonResponse(HttpResponseMessage message, CancellationToken cancellationToken )
+        public static string GetJsonResponse(HttpResponseMessage message, CancellationToken cancellationToken)
         {
             return message.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
         }
