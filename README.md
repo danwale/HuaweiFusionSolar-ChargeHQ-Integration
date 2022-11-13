@@ -6,6 +6,8 @@
 
 The intention of this integration is to poll the Huawei Fusion Solar API to determine how much solar power is being generated vs how much is being consumed from the grid and provide this to ChargeHQ's Push API that will enable ChargeHQ to regulate the charge rate of a Tesla car to maximise the use of solar energy rather than grid supplied power.
 
+This service is only needed while ChargeHQ doesn't support Huawei inverters, it's on the roadmap for their service so one day this might not be needed.
+
 It is in early development and testing with my own home setup for now, once initial testing is complete I'll open up the Docker repository for public access and welcome any feedback on your experience. 
 **Of course if you really like this service and want to thank me a donation would be much appreciated, see the various donation method buttons above.**
 
