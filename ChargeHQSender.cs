@@ -73,10 +73,11 @@ namespace HuaweiSolar
             }
             else 
             {
+                // consumption in watts I believe for single phase is Grid_Voltage * Phase_A_Current * Power_Factor
                 var consumption_watts = data.data[0].dataItemMap.ab_u * data.data[0].dataItemMap.a_i * data.data[0].dataItemMap.power_factor;
                 var consumption_kW = consumption_watts / 1000;
                 var net_import_kW = consumption_kW - data.data[0].dataItemMap.active_power;
-                var yieldToday = data.data[0].dataItemMap.day_cap;
+                var totalYield = data.data[0].dataItemMap.total_cap;
                 smp = new SiteMeterPush
                 {
                     apiKey = ChargeHQSettings.SiteId.ToString(),
@@ -86,7 +87,7 @@ namespace HuaweiSolar
                         production_kw = data.data[0].dataItemMap.active_power,
                         net_import_kw = net_import_kW,
                         consumption_kw = consumption_kW,
-                        exported_kwh = yieldToday
+                        exported_kwh = totalYield
                     }
                 };
             }
@@ -96,7 +97,7 @@ namespace HuaweiSolar
             var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(smp));
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                logger.LogDebug("Successfully sent data to ChargeHQ Solar Push API.");
+                logger.LogInformation("Successfully sent data to ChargeHQ Solar Push API.");
                 var json = Utility.GetJsonResponse(response, CancellationToken.None);
                 logger.LogDebug("Response from ChargeHQ: {0}", json);
                 return true;

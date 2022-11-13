@@ -6,9 +6,9 @@ using Timer = System.Timers.Timer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-using HuaweiSolar.Models;
 using Newtonsoft.Json;
 
+using HuaweiSolar.Models;
 using HuaweiSolar.Models.Configuration;
 
 namespace HuaweiSolar
@@ -36,11 +36,6 @@ namespace HuaweiSolar
         }
 
         private DeviceInfo DeviceInformation
-        {
-            get; set;
-        }
-
-        private static HuaweiSolarPoller Instance
         {
             get; set;
         }
@@ -97,6 +92,7 @@ namespace HuaweiSolar
                         if (stationList.data != null && stationList.data.Count > 0 && 
                                 stationList.data[0].stationName == HuaweiConfig.StationName)
                         {
+                            // This validation isn't really needed, verifying because we have the data
                             logger.LogInformation("Station name matches");
                             StationCode = stationList.data[0].stationCode;
 
@@ -123,8 +119,6 @@ namespace HuaweiSolar
                 {
                     logger.LogError("Failed to authenticate the user during initialisation.");
                 }
-
-                Instance = this;
             }
             return this;
         }

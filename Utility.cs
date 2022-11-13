@@ -2,9 +2,9 @@ using System.Text;
 
 using Newtonsoft.Json;
 
-using HuaweiSolar.Models;
-
 using Serilog;
+
+using HuaweiSolar.Models;
 
 namespace HuaweiSolar
 {
