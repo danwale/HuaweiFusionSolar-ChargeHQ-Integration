@@ -13,8 +13,5 @@ namespace HuaweiSolar.Models
         public string stationName {get;set;}
     }
 
-    public class StationInfoParams
-    {
-        public long currentTime {get;set;}
-    }
+    
 }

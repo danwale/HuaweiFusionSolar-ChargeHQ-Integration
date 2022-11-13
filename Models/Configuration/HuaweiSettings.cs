@@ -14,6 +14,7 @@ namespace HuaweiSolar.Models.Configuration
             get; set;
         }
 
+        // this is the systemCode that Huawei provide when requested
         public string Password 
         {
             get; set;
