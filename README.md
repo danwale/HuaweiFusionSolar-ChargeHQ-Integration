@@ -8,7 +8,7 @@ The intention of this integration is to poll the Huawei Fusion Solar API to dete
 
 This service is only needed while ChargeHQ doesn't support Huawei inverters, it's on the roadmap for their service so one day this might not be needed.
 
-It is in early development and testing with my own home setup for now, once initial testing is complete I'll open up the Docker repository for public access and welcome any feedback on your experience. 
+It is in early development and testing with my own home setup for now, once initial testing is complete I'll open up the Docker repository for public access (it's private while I do early alpha version testing) and welcome any feedback on your experience. 
 **Of course if you really like this service and want to thank me a donation would be much appreciated, see the various donation method buttons above.**
 
 Sample docker-compose.yml:
