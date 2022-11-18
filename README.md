@@ -11,7 +11,11 @@ This service is only needed while ChargeHQ doesn't support Huawei inverters, it'
 It is in early development and testing with my own home setup for now, once initial testing is complete I'll open up the Docker repository for public access (it's private while I do early alpha version testing) and welcome any feedback on your experience. 
 **Of course if you really like this service and want to thank me a donation would be much appreciated, see the various donation method buttons above.**
 
+**NOTE**: The testing of the values calculated for grid consumption vs solar consumption is still required, I've added a feature toggle in the
+settings (HUAWEI:SENDGRIDVALUES) to be able to turn this data on/off easily for testing which gives the desired effect.
+
 Sample docker-compose.yml:
+
 ```yaml
 version: "3"
 
@@ -25,6 +29,7 @@ services:
       - HUAWEI__PASSWORD= #insert the system code/password Huawei have issued
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
+      - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values, defaults to true
       - CHARGEHQ__SITEID= #insert your ChargeHQ Site ID here
       - SERILOG__MINIMUMLEVEL=Information # Use Debug if you want to see information on message payloads
     volumes:
@@ -36,21 +41,25 @@ volumes:
 ```
 
 Run the following command to run the service:
-```
+
+```bash
 docker-compose up -d
 ```
 
 If you want to watch the logs run the command:
-```
+
+```bash
 docker-compose logs --follow huawei-solar
 ```
 
 To stop the service run:
-```
+
+```bash
 docker-compose stop huawei-solar
 ```
 
 You can configure the entire service using environment variables as show above but if you want to use a configuration file you can put an **appsettings.json** in the mapped volume and it will take effect, environment variables will override any equivalent settings:
+
 ```json
 {
     "Huawei": {
@@ -58,7 +67,8 @@ You can configure the entire service using environment variables as show above b
         "Username":"<Username Here>",
         "Password": "<System Code Here>",
         "StationName": "<Station Name Here>",
-        "PollRate": 5
+        "PollRate": 5,
+        "SendGridValues": true
     },
     "ChargeHQ": {
         "PushURI": "https://api.chargehq.net/api/public/push-solar-data",
