@@ -10,7 +10,7 @@ namespace HuaweiSolar
     public class Program
     {
         private static ServiceProvider ServiceProvider { get; set; }
-        private const string XSRF_TOKEN_KEY = "XSRF-TOKEN";
+
         public static void Main(string[] args)
         {
             var serviceCollection = new ServiceCollection();
@@ -40,7 +40,7 @@ namespace HuaweiSolar
         }
 
         /// <summary>
-        /// Handles cleanup operations when app is cancelled or unloads
+        /// <c>WhenCancelled</c> - Handles cleanup operations when app is cancelled or unloads
         /// </summary>
         public static Task WhenCancelled(CancellationToken cancellationToken)
         {
@@ -49,6 +49,9 @@ namespace HuaweiSolar
             return tcs.Task;
         }
 
+        /// <summary
+        /// <c>ConfigureServices</c> - Sets up the dependency injection of services
+        /// </summary>
         private static void ConfigureServices(ServiceCollection serviceCollection)
         {
             string configPath = Environment.GetEnvironmentVariable("ConfigPath");

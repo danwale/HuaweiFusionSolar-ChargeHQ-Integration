@@ -56,6 +56,11 @@ namespace HuaweiSolar
             this.logger = logger;
         }
 
+        /// <summary>
+        /// <c>InitialiseAsync</c> - Sets up the component for polling the Huawei Fusion Solar API.
+        /// It will login to the API and read some data objects out that will be used for polling solar production data
+        /// </summary>
+        /// <returns>The HuaweiSolarPoller object that was initialised</summary>
         public async Task<HuaweiSolarPoller> InitialiseAsync(CancellationTokenSource cancellationTokenSource)
         {
             if (!initialised) 
@@ -123,6 +128,9 @@ namespace HuaweiSolar
             return this;
         }
         
+        /// <summary>
+        /// <c>Start</c> - Starts the poller and does an initial poll immediately.
+        /// </summary>
         internal void Start()
         {
             if (!isStarted)
@@ -136,19 +144,24 @@ namespace HuaweiSolar
             }
         }
 
+        /// <summary>
+        /// <c>Stop</c> - Stops the poller
+        /// </summary>
         internal void Stop()
         {
             if (isStarted)
             {
                 Timer.Stop();
                 CancellationTokenSource.Cancel();
+                isStarted = false;
             }
         }
 
-        /*
-         * Sends a Login Request to Huawei's Fusion Solar API, extracts the cookie and puts it in the default headers
-         * for all future requests to the API.
-         */
+        /// <summary>
+        /// <c>GetXsrfToken</c> - Sends a Login Request to Huawei's Fusion Solar API, extracts the cookie and puts it in the default headers
+        //  for all future requests to the API.
+        /// </summary>
+        /// <returns>True if it successfully logged in, otherwise False</returns>
         private async Task<bool> GetXsrfToken(CancellationToken cancellationToken)
         {
             if (initialised)
@@ -185,6 +198,12 @@ namespace HuaweiSolar
             return false;
         }
 
+        /// <summary>
+        /// <c>PostDataRequestAsync</c> - Does a HTTP POST to the Huawei Fusion Solar API with automatic re-authentication if required.
+        /// If it gets an error response from the API call it will retry every 5 seconds until it gets a valid response 
+        /// (such as Fusion Solar being offline for maintenance).
+        /// </summary>
+        /// <returns>The HTTP response message or null if there was an error with the HTTP POST</returns>
         private async Task<HttpResponseMessage> PostDataRequestAsync(string uri, StringContent content, CancellationToken cancellationToken)
         {
             try
@@ -222,6 +241,11 @@ namespace HuaweiSolar
             }
         }
 
+        /// <summary>
+        /// <c>PollGenerationStatistics_Elapsed</c> - This is the elapsed timer handler, it will poll for solar production data
+        /// and if it successfully gets it send it onto the <c>ChargeHQSender</c> for sending to ChargeHQ's Push API.
+        /// If it fails to get the data it will send an error string instead.
+        /// </summary>
         private async void PollGenerationStatistics_Elapsed(object sender, ElapsedEventArgs e) 
         {
             try 
@@ -272,6 +296,11 @@ namespace HuaweiSolar
             }
         }
 
+        /// <summary>
+        /// <c>GetUri</c> - Combines the method URI and base URI for the Huawei services ensuring it handles configuration errors.
+        /// </summary>
+        /// <param name="methodUri">The relative URI path to the relevant service</param>
+        /// <returns>The full URI for the Huawei Fusion Solar API target</returns>
         private string GetUri(string methodUri)
         {
             if (methodUri.StartsWith("/"))
