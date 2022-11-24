@@ -33,6 +33,6 @@ namespace HuaweiSolar.Models.Configuration
         public bool SendGridValues
         {
             get; set;
-        } = true;
+        } = false;
     }
 }
