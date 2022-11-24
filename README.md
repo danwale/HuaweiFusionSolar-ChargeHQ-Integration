@@ -12,7 +12,7 @@ It is in early development and testing with my own home setup for now, once init
 **Of course if you really like this service and want to thank me a donation would be much appreciated, see the various donation method buttons above.**
 
 **NOTE**: The testing of the values calculated for grid consumption vs solar consumption is still required, I've added a feature toggle in the
-settings (HUAWEI:SENDGRIDVALUES) to be able to turn this data on/off easily for testing which gives the desired effect.
+settings (HUAWEI:SENDGRIDVALUES) to be able to turn this data on/off easily for testing which gives the desired effect, it will default to disabled.
 
 Sample docker-compose.yml:
 
@@ -29,7 +29,7 @@ services:
       - HUAWEI__PASSWORD= #insert the system code/password Huawei have issued
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
-      - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values, defaults to true
+      - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values, defaults to false
       - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information # Use Debug if you want to see information on message payloads
     volumes:
@@ -68,7 +68,7 @@ You can configure the entire service using environment variables as show above b
         "Password": "<System Code Here>",
         "StationName": "<Station Name Here>",
         "PollRate": 5,
-        "SendGridValues": true
+        "SendGridValues": false
     },
     "ChargeHQ": {
         "PushURI": "https://api.chargehq.net/api/public/push-solar-data",
