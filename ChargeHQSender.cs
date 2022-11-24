@@ -45,7 +45,7 @@ namespace HuaweiSolar
         {
             var smp = new SiteMeterPush
             {
-                apiKey = ChargeHQSettings.SiteId.ToString(),
+                apiKey = ChargeHQSettings.ApiKey.ToString(),
                 error = errorMessage
             };
 
@@ -93,7 +93,7 @@ namespace HuaweiSolar
             {
                 smp = new SiteMeterPush
                 {
-                    apiKey = ChargeHQSettings.SiteId.ToString(),
+                    apiKey = ChargeHQSettings.ApiKey.ToString(),
                     tsms = data.parameters.currentTime,
                     sitesMeters = new SiteMeter
                     {
@@ -110,7 +110,7 @@ namespace HuaweiSolar
                 var totalYield = data.data[0].dataItemMap.total_cap; // this is the total lifetime energy produced by the inverter
                 smp = new SiteMeterPush
                 {
-                    apiKey = ChargeHQSettings.SiteId.ToString(),
+                    apiKey = ChargeHQSettings.ApiKey.ToString(),
                     tsms = data.parameters.currentTime,
                     sitesMeters = new SiteMeter
                     {
