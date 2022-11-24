@@ -30,7 +30,7 @@ services:
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
       - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values, defaults to true
-      - CHARGEHQ__SITEID= #insert your ChargeHQ Site ID here
+      - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information # Use Debug if you want to see information on message payloads
     volumes:
      - huaweisolar-conf:/etc/huaweisolar
@@ -72,7 +72,7 @@ You can configure the entire service using environment variables as show above b
     },
     "ChargeHQ": {
         "PushURI": "https://api.chargehq.net/api/public/push-solar-data",
-        "SiteID": "<ChargeHQ SiteID Here>"
+        "ApiKey": "<ChargeHQ API Key Here>"
     },
     "Serilog" : {
         "Using":  [ "Serilog.Sinks.Console" ],

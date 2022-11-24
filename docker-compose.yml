@@ -11,7 +11,7 @@ services:
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
       - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values
-      - CHARGEHQ__SITEID= #insert your ChargeHQ Site ID here
+      - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information
     volumes:
      - huaweisolar-conf:/etc/huaweisolar
