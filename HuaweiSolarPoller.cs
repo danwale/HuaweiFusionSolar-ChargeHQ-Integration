@@ -88,33 +88,28 @@ namespace HuaweiSolar
                 {
                     logger.LogInformation("Successfully authenticated the user during intialisation.");
 
-                    var res = await PostDataRequestAsync(GetUri(Constants.STATION_LIST_URI), null, CancellationTokenSource.Token);
-                    var gotStationList = Utility.WasSuccessMessage(res, out string content, out _, CancellationTokenSource.Token);
-                    if (gotStationList)
+                    var stationListResponse = await PostDataRequestAsync<GetStationListResponse>(GetUri(Constants.STATION_LIST_URI), null, CancellationTokenSource.Token);
+                    if (stationListResponse.success)
                     {
-                        var stationList = JsonConvert.DeserializeObject<GetStationListResponse>(content);
-
-                        if (stationList.data != null && stationList.data.Count > 0 && 
-                                stationList.data[0].stationName == HuaweiConfig.StationName)
+                        if (stationListResponse.data != null && stationListResponse.data.Count > 0 && 
+                                stationListResponse.data[0].stationName == HuaweiConfig.StationName)
                         {
                             // This validation isn't really needed, verifying because we have the data
                             logger.LogInformation("Station name matches");
-                            StationCode = stationList.data[0].stationCode;
+                            StationCode = stationListResponse.data[0].stationCode;
 
                             var gdlr = new GetDeviceListRequest
                             {
                                 stationCodes = StationCode
                             };
-                            res = await PostDataRequestAsync(GetUri(Constants.DEV_LIST_URI), 
+                            var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI), 
                                             Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
-                            var successDevList = Utility.WasSuccessMessage(res, out content, out _, CancellationTokenSource.Token);
-                            if (successDevList)
+                            if (deviceInfoResponse.success)
                             {
-                                var devList = JsonConvert.DeserializeObject<DeviceInfoResponse>(content);
-                                if (devList.data != null && devList.data.Count > 0)
+                                if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
-                                    logger.LogInformation(JsonConvert.SerializeObject(devList.data[0]));
-                                    DeviceInformation = devList.data[0];
+                                    logger.LogInformation(JsonConvert.SerializeObject(deviceInfoResponse.data[0]));
+                                    DeviceInformation = deviceInfoResponse.data[0];
                                 }
                             }
                         }
@@ -172,8 +167,8 @@ namespace HuaweiSolar
                     systemCode = HuaweiConfig.Password
                 };
                 var content = Utility.GetStringContent(lcr);
-                var response = await PostDataRequestAsync(GetUri(Constants.LOGIN_URI), content, cancellationToken);
-                if (response.StatusCode == HttpStatusCode.OK)
+                var response = await PostDataRequestAsync<BaseResponse>(GetUri(Constants.LOGIN_URI), content, cancellationToken);
+                if (response.success)
                 {
                     logger.LogInformation("Successfully did login and got back cookie");
                     bool cookieFound = false;
@@ -191,7 +186,7 @@ namespace HuaweiSolar
                 }
                 else
                 {
-                    logger.LogError("The login request failed, it returned a status code of {0}", response.StatusCode);
+                    logger.LogError("The login request failed, it returned a fail code of {0} and message {1}", response.failCode, response.message);
                     return false;
                 }
             }
@@ -204,34 +199,34 @@ namespace HuaweiSolar
         /// (such as Fusion Solar being offline for maintenance).
         /// </summary>
         /// <returns>The HTTP response message or null if there was an error with the HTTP POST</returns>
-        private async Task<HttpResponseMessage> PostDataRequestAsync(string uri, StringContent content, CancellationToken cancellationToken)
+        private async Task<T> PostDataRequestAsync<T>(string uri, StringContent content, CancellationToken cancellationToken) where T: BaseResponse
         {
             try
             {
                 var response = await _client.PostAsync(uri, content, cancellationToken);
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
-                    bool success = Utility.WasSuccessMessage(response, out string json, out BaseResponse responseObj, cancellationToken);
+                    bool success = Utility.WasSuccessMessage<T>(response, out string json, out T responseObj, cancellationToken);
                     if (success && responseObj.failCode == 305)
                     {
                         success = await GetXsrfToken(cancellationToken);
                         if (success)
                         {
                             logger.LogInformation("Successfully re-authenticated with the API. Resending original API request.");
-                            response = await PostDataRequestAsync(uri, content, cancellationToken);
+                            responseObj = await PostDataRequestAsync<T>(uri, content, cancellationToken);
                         }
                         else 
                         {
                             logger.LogError("Failed to re-authenticate with the API.");
                         }
                     }
-                    return response;
+                    return responseObj;
                 }
                 else
                 {
                     logger.LogWarning("There was a failed request, it is retring after 5 seconds");
                     Thread.Sleep(5000);
-                    return await PostDataRequestAsync(uri, content, cancellationToken);
+                    return await PostDataRequestAsync<T>(uri, content, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -257,16 +252,14 @@ namespace HuaweiSolar
                         devIds = DeviceInformation.id.ToString(),
                         devTypeId = DeviceInformation.devTypeId
                     };
-                    var powerData = await PostDataRequestAsync(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(req), CancellationTokenSource.Token);
-                    var success = Utility.WasSuccessMessage(powerData, out string json, out BaseResponse response, CancellationTokenSource.Token);
-                    if (success) 
+                    var powerData = await PostDataRequestAsync<DevRealKpiResponse>(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(req), CancellationTokenSource.Token);
+                    if (powerData.success) 
                     { 
-                        var respObj = JsonConvert.DeserializeObject<DevRealKpiResponse>(json);
-                        if (respObj.data != null && respObj.data.Count > 0) 
+                        if (powerData.data != null && powerData.data.Count > 0) 
                         {
                             // Send active power to ChargeHQ
                             logger.LogDebug("Sending power data to ChargeHQ.");
-                            bool successfullySent = await this.chargeHqSender.SendData(respObj);
+                            bool successfullySent = await this.chargeHqSender.SendData(powerData);
                             if (successfullySent) 
                             {
                                 logger.LogDebug("Sent the data successfully to ChargeHQ.");
@@ -284,8 +277,8 @@ namespace HuaweiSolar
                     }
                     else
                     {
-                        logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {response.failCode}, message: {response.message}");
-                        await this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {response.failCode}, message: {response.message}");
+                        logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
+                        await this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
                     }
                 }
             }

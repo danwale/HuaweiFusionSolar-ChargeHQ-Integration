@@ -28,14 +28,14 @@ namespace HuaweiSolar
             return message.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
         }
 
-        public static bool WasSuccessMessage(HttpResponseMessage message, out string json, out BaseResponse response, CancellationToken cancellationToken)
+        public static bool WasSuccessMessage<T>(HttpResponseMessage message, out string json, out T response, CancellationToken cancellationToken) where T : BaseResponse
         {
             json = null;
             response = null;
             if (message != null)
             {
                 json = GetJsonResponse(message, cancellationToken);
-                response = JsonConvert.DeserializeObject<BaseResponse>(json);
+                response = JsonConvert.DeserializeObject<T>(json);
                 if (response != null) 
                 {
                     return response.success;
