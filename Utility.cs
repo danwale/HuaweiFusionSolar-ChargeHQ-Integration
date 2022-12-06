@@ -34,11 +34,19 @@ namespace HuaweiSolar
             response = null;
             if (message != null)
             {
-                json = GetJsonResponse(message, cancellationToken);
-                response = JsonConvert.DeserializeObject<T>(json);
-                if (response != null) 
+                try
                 {
-                    return response.success;
+                    json = GetJsonResponse(message, cancellationToken);
+                    response = JsonConvert.DeserializeObject<T>(json);
+                    if (response != null) 
+                    {
+                        return response.success;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Logger.Warning(ex, "Failed to get a valid response from the service.");
+                    return false;
                 }
             }
             return false;
