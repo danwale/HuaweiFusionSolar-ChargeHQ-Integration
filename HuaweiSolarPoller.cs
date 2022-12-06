@@ -45,6 +45,11 @@ namespace HuaweiSolar
             get; set;
         }
 
+        private static int RetryCount
+        {
+            get; set;
+        } = 0;
+
         private ChargeHQSender chargeHqSender { get;set;}
 
         private static CancellationTokenSource CancellationTokenSource;
@@ -224,15 +229,34 @@ namespace HuaweiSolar
                 }
                 else
                 {
-                    logger.LogWarning("There was a failed request, it is retring after 5 seconds");
-                    Thread.Sleep(5000);
-                    return await PostDataRequestAsync<T>(uri, content, cancellationToken);
+                    RetryCount++;
+                    if (RetryCount < 5) 
+                    {
+                        logger.LogWarning("There was a failed request, it is retring after 5 seconds...Retry Count: {0}", RetryCount);
+                        Thread.Sleep(5000);
+                        return await PostDataRequestAsync<T>(uri, content, cancellationToken);
+                    }
+                    else
+                    {
+                        RetryCount = 0;
+                        return (T)new BaseResponse
+                                {
+                                    success = false,
+                                    failCode = 1001,
+                                    message = string.Format("Failed after the maximum retry count for URI: '{0}'", uri)
+                                };
+                    }
                 }
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Request failed to URI: '{0}'", uri);
-                return null;
+                return (T)new BaseResponse
+                {
+                    success = false,
+                    failCode = 1001,
+                    message = string.Format("Request failed to URI: '{0}'", uri)
+                };
             }
         }
 
@@ -253,7 +277,7 @@ namespace HuaweiSolar
                         devTypeId = DeviceInformation.devTypeId
                     };
                     var powerData = await PostDataRequestAsync<DevRealKpiResponse>(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(req), CancellationTokenSource.Token);
-                    if (powerData.success) 
+                    if (powerData != null && powerData.success) 
                     { 
                         if (powerData.data != null && powerData.data.Count > 0) 
                         {
@@ -277,6 +301,15 @@ namespace HuaweiSolar
                     }
                     else
                     {
+                        if (powerData == null)
+                        {
+                            powerData = new DevRealKpiResponse
+                                {
+                                    success = false,
+                                    failCode = 1002,
+                                    message = "The returned power data from Huawei was null"
+                                };
+                        }
                         logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
                         await this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
                     }
