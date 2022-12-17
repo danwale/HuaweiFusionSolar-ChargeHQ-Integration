@@ -19,7 +19,7 @@ namespace HuaweiSolar.Models
 
         // provide the meter data, unless there was an error
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public SiteMeter sitesMeters { get; set; } = null;
+        public SiteMeter siteMeters { get; set; } = null;
     }
 
     public class SiteMeter
