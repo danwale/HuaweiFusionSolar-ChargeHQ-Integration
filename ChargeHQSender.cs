@@ -95,7 +95,7 @@ namespace HuaweiSolar
                 {
                     apiKey = ChargeHQSettings.ApiKey.ToString(),
                     tsms = data.parameters.currentTime,
-                    sitesMeters = new SiteMeter
+                    siteMeters = new SiteMeter
                     {
                         production_kw = data.data[0].dataItemMap.active_power
                     }
@@ -112,7 +112,7 @@ namespace HuaweiSolar
                 {
                     apiKey = ChargeHQSettings.ApiKey.ToString(),
                     tsms = data.parameters.currentTime,
-                    sitesMeters = new SiteMeter
+                    siteMeters = new SiteMeter
                     {
                         production_kw = data.data[0].dataItemMap.active_power,
                         net_import_kw = HuaweiSettings.SendGridValues ? net_import_kW : null,   // leave out value if toggled off in settings
