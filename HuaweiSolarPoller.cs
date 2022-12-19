@@ -1,8 +1,6 @@
 using System.Net;
 using System.Timers;
 
-using Timer = System.Timers.Timer;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +8,8 @@ using Newtonsoft.Json;
 
 using HuaweiSolar.Models;
 using HuaweiSolar.Models.Configuration;
+
+using Timer = System.Timers.Timer;
 
 namespace HuaweiSolar
 {

@@ -9,7 +9,6 @@ namespace HuaweiSolar
         
         // need to login every 30 minutes
         public const string LOGIN_URI = "thirdData/login";
-        public const string LOGOUT_URI = "thirdData/logout";
 
         public const string STATION_LIST_URI = "thirdData/getStationList";
 

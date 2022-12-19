@@ -4,15 +4,11 @@
 
 [![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/danwale?country.x=AU&locale.x=en_AU) <a href="https://www.buymeacoffee.com/danwale" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 20px !important;width: 105px !important;" ></a>
 
-The intention of this integration is to poll the Huawei Fusion Solar API to determine how much solar power is being generated vs how much is being consumed from the grid and provide this to ChargeHQ's Push API that will enable ChargeHQ to regulate the charge rate of a Tesla car to maximise the use of solar energy rather than grid supplied power.
+The intention of this integration is to poll the Huawei Fusion Solar API to determine how much solar power is being generated and provide this to ChargeHQ's Push API that will enable ChargeHQ to regulate the charge rate of a Tesla car to maximise the use of solar energy rather than grid supplied power.
 
 This service is only needed while ChargeHQ doesn't support Huawei inverters, it's on the roadmap for their service so one day this might not be needed.
 
-It is in early development and testing with my own home setup for now, once initial testing is complete I'll open up the Docker repository for public access (it's private while I do early alpha version testing) and welcome any feedback on your experience. 
 **Of course if you really like this service and want to thank me a donation would be much appreciated, see the various donation method buttons above.**
-
-**NOTE**: The testing of the values calculated for grid consumption vs solar consumption is still required, I've added a feature toggle in the
-settings (HUAWEI:SENDGRIDVALUES) to be able to turn this data on/off easily for testing which gives the desired effect, it will default to disabled.
 
 Sample docker-compose.yml:
 
@@ -29,7 +25,6 @@ services:
       - HUAWEI__PASSWORD= #insert the system code/password Huawei have issued
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
-      - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values, defaults to false
       - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information # Use Debug if you want to see information on message payloads
     volumes:
@@ -67,8 +62,7 @@ You can configure the entire service using environment variables as show above b
         "Username":"<Username Here>",
         "Password": "<System Code Here>",
         "StationName": "<Station Name Here>",
-        "PollRate": 5,
-        "SendGridValues": false
+        "PollRate": 5
     },
     "ChargeHQ": {
         "PushURI": "https://api.chargehq.net/api/public/push-solar-data",

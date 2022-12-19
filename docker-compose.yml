@@ -10,7 +10,6 @@ services:
       - HUAWEI__PASSWORD= #insert the system code/password Huawei have issued
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
-      - HUAWEI__SENDGRIDVALUES= #insert boolean value of if you should send the grid values
       - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information
     volumes:

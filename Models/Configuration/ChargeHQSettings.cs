@@ -1,5 +1,3 @@
-using Newtonsoft.Json;
-
 namespace HuaweiSolar.Models.Configuration
 {
     public class ChargeHQSettings

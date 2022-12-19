@@ -61,7 +61,7 @@ namespace HuaweiSolar
                 logger.LogWarning("Failed to send error data to ChargeHQ Solar Push API. Response: {0}", response.StatusCode);
                 var json = Utility.GetJsonResponse(response, CancellationToken.None);
                 logger.LogDebug("Response from ChargeHQ: {0}", json);
-                 return false;
+                return false;
             }
         }
 
@@ -72,58 +72,25 @@ namespace HuaweiSolar
         /// <returns>
         /// True if the data was successfully pushed the ChargeHQ Push API otherwise False.
         /// </returns>
-        /// <remarks>
-        /// These calculations are experimental if they actually correct measurements of net_import and consumption from the grid
-        /// it's a little hard to tell from the Huawei documentation and data if this is correct, THIS NEEDS TESTING.
-        /// 
-        /// The Huawei:SendGridValues setting will leave them out of the payload to ChargeHQ in the case that they are not correct.
-        ///
-        /// The current assumptions are based on analysis of power usage from the power utility vs Huawei data at those dates and times,
-        /// they seem to indicate that the AC energy drawn shown as grid current is measured after the solar energy is converted from
-        /// DC to AC and goes into this amount so the net_import would be this consumption_kW minus the active_power.
-        /// </remarks>
         public async Task<bool> SendData(DevRealKpiResponse data)
         {
             bool isShutdown = data.data[0].dataItemMap.inverter_state != 512;
-            SiteMeterPush smp;
+            logger.LogDebug("The inverter is currently shutdown due to no sunlight");
 
-            // If the inverter is shutdown (i.e. there is no sun light) the active power is 0 and no other readings are available
-            // this being sent to ChargeHQ should ensure that no charging would occur.
-            if (isShutdown)
+            var totalYield = data.data[0].dataItemMap.total_cap; // this is the total lifetime energy produced by the inverter
+            var smp = new SiteMeterPush
             {
-                smp = new SiteMeterPush
+                apiKey = ChargeHQSettings.ApiKey.ToString(),
+                tsms = data.parameters.currentTime,
+                siteMeters = new SiteMeter
                 {
-                    apiKey = ChargeHQSettings.ApiKey.ToString(),
-                    tsms = data.parameters.currentTime,
-                    siteMeters = new SiteMeter
-                    {
-                        production_kw = data.data[0].dataItemMap.active_power
-                    }
-                };
-            }
-            else 
-            {
-                // consumption in watts I believe for single phase is Grid_Voltage * Phase_A_Current * Power_Factor
-                var consumption_watts = data.data[0].dataItemMap.ab_u * data.data[0].dataItemMap.a_i * data.data[0].dataItemMap.power_factor;
-                var consumption_kW = consumption_watts / 1000; // convert to kW
-                var net_import_kW = consumption_kW - data.data[0].dataItemMap.active_power; // remove the solar input from this amount
-                var totalYield = data.data[0].dataItemMap.total_cap; // this is the total lifetime energy produced by the inverter
-                smp = new SiteMeterPush
-                {
-                    apiKey = ChargeHQSettings.ApiKey.ToString(),
-                    tsms = data.parameters.currentTime,
-                    siteMeters = new SiteMeter
-                    {
-                        production_kw = data.data[0].dataItemMap.active_power,
-                        net_import_kw = HuaweiSettings.SendGridValues ? net_import_kW : null,   // leave out value if toggled off in settings
-                        consumption_kw = HuaweiSettings.SendGridValues ? consumption_kW : null, // leave out value if toggled off in settings
-                        exported_kwh = totalYield
-                    }
-                };
-            }
-            
+                    production_kw = data.data[0].dataItemMap.active_power,
+                    exported_kwh = totalYield
+                }
+            };
+
             logger.LogDebug("ChargeHQ Site Meter Push: {0}", JsonConvert.SerializeObject(smp, Formatting.None));
-            
+
             // Send the SiteMeterPush data model to ChargeHQ Push API
             var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(smp));
             if (response.StatusCode == HttpStatusCode.OK)

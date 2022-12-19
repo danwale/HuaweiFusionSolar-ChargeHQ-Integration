@@ -1,5 +1,3 @@
-using Newtonsoft.Json;
-
 namespace HuaweiSolar.Models.Configuration
 {
     public class HuaweiSettings
@@ -29,10 +27,5 @@ namespace HuaweiSolar.Models.Configuration
         {
             get; set;
         }
-
-        public bool SendGridValues
-        {
-            get; set;
-        } = false;
     }
 }
