@@ -19,7 +19,7 @@ namespace HuaweiSolar
         public static StringContent GetStringContent(object obj, Formatting formatOption = Formatting.None)
         {
             string json = JsonConvert.SerializeObject(obj, formatOption);
-            Log.Logger.Debug("JSON Content: '{0}", json);
+            Log.Logger.Debug("JSON Request Content: '{0}'", json);
             return GetStringContent(json);
         }
 
@@ -37,6 +37,7 @@ namespace HuaweiSolar
                 try
                 {
                     json = GetJsonResponse(message, cancellationToken);
+                    Log.Logger.Debug("JSON Response Content: '{0}'", json);
                     response = JsonConvert.DeserializeObject<T>(json);
                     if (response != null) 
                     {
