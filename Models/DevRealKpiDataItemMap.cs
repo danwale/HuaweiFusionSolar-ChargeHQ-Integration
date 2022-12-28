@@ -13,6 +13,7 @@ namespace HuaweiSolar.Models
         public double power_factor { get; set; }
         public double pv7_u { get; set; }
         public double pv8_u { get; set; }
+        [JsonConverter(typeof(HuaweiInvalidTimeConverter))]
         public long open_time { get; set; }
         public double inverter_state { get; set; }
         public double a_i { get; set; }
@@ -32,7 +33,7 @@ namespace HuaweiSolar.Models
         public double day_cap { get; set; }
         public double mppt_power { get; set; }
         public int run_state { get; set; }
-        [JsonConverter(typeof(CloseTimeConverter))]
+        [JsonConverter(typeof(HuaweiInvalidTimeConverter))]
         public long close_time { get; set; }
         public double mppt_1_cap { get; set; }
         public double pv1_i { get; set; }
