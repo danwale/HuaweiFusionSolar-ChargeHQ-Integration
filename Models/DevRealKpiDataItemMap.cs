@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace HuaweiSolar.Models
 {
     public class DevRealKpiDataItemMap
@@ -30,6 +32,7 @@ namespace HuaweiSolar.Models
         public double day_cap { get; set; }
         public double mppt_power { get; set; }
         public int run_state { get; set; }
+        [JsonConverter(typeof(CloseTimeConverter))]
         public long close_time { get; set; }
         public double mppt_1_cap { get; set; }
         public double pv1_i { get; set; }
