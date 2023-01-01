@@ -265,7 +265,7 @@ namespace HuaweiSolar
         /// and if it successfully gets it send it onto the <c>ChargeHQSender</c> for sending to ChargeHQ's Push API.
         /// If it fails to get the data it will send an error string instead.
         /// </summary>
-        private async void PollGenerationStatistics_Elapsed(object sender, ElapsedEventArgs e) 
+        private void PollGenerationStatistics_Elapsed(object sender, ElapsedEventArgs e) 
         {
             try 
             {
@@ -276,14 +276,15 @@ namespace HuaweiSolar
                         devIds = DeviceInformation.id.ToString(),
                         devTypeId = DeviceInformation.devTypeId
                     };
-                    var powerData = await PostDataRequestAsync<DevRealKpiResponse>(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(req), CancellationTokenSource.Token);
+                    var powerData = PostDataRequestAsync<DevRealKpiResponse>(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(req), 
+                                                                                CancellationTokenSource.Token).GetAwaiter().GetResult();
                     if (powerData != null && powerData.success) 
                     { 
                         if (powerData.data != null && powerData.data.Count > 0) 
                         {
                             // Send active power to ChargeHQ
                             logger.LogDebug("Sending power data to ChargeHQ.");
-                            bool successfullySent = await this.chargeHqSender.SendData(powerData);
+                            bool successfullySent = this.chargeHqSender.SendData(powerData).GetAwaiter().GetResult();
                             if (successfullySent) 
                             {
                                 logger.LogDebug("Sent the data successfully to ChargeHQ.");
@@ -296,7 +297,16 @@ namespace HuaweiSolar
                         else 
                         {
                             logger.LogWarning("The power data returned from Huawei's Fusion Solar was not valid.");
-                            await this.chargeHqSender.SendErrorData("Huawei's FusionSolar power data was not in an expected format");
+                            bool successfullySent = this.chargeHqSender.SendErrorData("Huawei's FusionSolar power data was not in an expected format")
+                                                                                        .GetAwaiter().GetResult();
+                            if (successfullySent) 
+                            {
+                                logger.LogDebug("Sent the error data successfully to ChargeHQ.");
+                            }
+                            else
+                            {
+                                logger.LogError("Failed to send the error data to ChargeHQ.");
+                            }
                         }
                     }
                     else
@@ -311,14 +321,31 @@ namespace HuaweiSolar
                                 };
                         }
                         logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
-                        await this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
+                        bool successfullySent = this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}")
+                                                                                    .GetAwaiter().GetResult();
+                        if (successfullySent) 
+                        {
+                            logger.LogDebug("Sent the error data successfully to ChargeHQ.");
+                        }
+                        else
+                        {
+                            logger.LogError("Failed to send the error data to ChargeHQ.");
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "An exception was caught while polling for power data to send to ChargeHQ.");
-                await this.chargeHqSender.SendErrorData("An error occurred while polling the Huawei FusionSolar API");
+                bool successfullySent = this.chargeHqSender.SendErrorData("An error occurred while polling the Huawei FusionSolar API").GetAwaiter().GetResult();
+                if (successfullySent) 
+                {
+                    logger.LogDebug("Sent the error data successfully to ChargeHQ.");
+                }
+                else
+                {
+                    logger.LogError("Failed to send the error data to ChargeHQ.");
+                }
             }
         }
 
