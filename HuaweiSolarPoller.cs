@@ -25,6 +25,11 @@ namespace HuaweiSolar
 
         private bool initialised = false;
 
+        private static bool HuaweiPollerInititalised
+        {
+            get; set;
+        }
+
         private HuaweiSettings HuaweiConfig
         {
             get; set;
@@ -88,44 +93,55 @@ namespace HuaweiSolar
                     return true;
                 };
                 _client = new HttpClient(_handler);
-                var success = await GetXsrfToken(CancellationTokenSource.Token);
-                if (success)
+                HuaweiPollerInititalised = await AuthenticateHuaweiAPI();
+            }
+            return this;
+        }
+
+        private async Task<bool> AuthenticateHuaweiAPI()
+        {
+            var success = await GetXsrfToken(CancellationTokenSource.Token);
+            if (success)
+            {
+                logger.LogInformation("Successfully authenticated the user during intialisation.");
+
+                var stationListResponse = await PostDataRequestAsync<GetStationListResponse>(GetUri(Constants.STATION_LIST_URI), null, CancellationTokenSource.Token);
+                if (stationListResponse.success)
                 {
-                    logger.LogInformation("Successfully authenticated the user during intialisation.");
-
-                    var stationListResponse = await PostDataRequestAsync<GetStationListResponse>(GetUri(Constants.STATION_LIST_URI), null, CancellationTokenSource.Token);
-                    if (stationListResponse.success)
+                    if (stationListResponse.data != null && stationListResponse.data.Count > 0 && 
+                            stationListResponse.data[0].stationName == HuaweiConfig.StationName)
                     {
-                        if (stationListResponse.data != null && stationListResponse.data.Count > 0 && 
-                                stationListResponse.data[0].stationName == HuaweiConfig.StationName)
-                        {
-                            // This validation isn't really needed, verifying because we have the data
-                            logger.LogInformation("Station name matches");
-                            StationCode = stationListResponse.data[0].stationCode;
+                        // This validation isn't really needed, verifying because we have the data
+                        logger.LogInformation("Station name matches");
+                        StationCode = stationListResponse.data[0].stationCode;
 
-                            var gdlr = new GetDeviceListRequest
+                        var gdlr = new GetDeviceListRequest
+                        {
+                            stationCodes = StationCode
+                        };
+                        var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI), 
+                                        Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
+                        if (deviceInfoResponse.success)
+                        {
+                            if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                             {
-                                stationCodes = StationCode
-                            };
-                            var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI), 
-                                            Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
-                            if (deviceInfoResponse.success)
-                            {
-                                if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
-                                {
-                                    logger.LogInformation(JsonConvert.SerializeObject(deviceInfoResponse.data[0]));
-                                    DeviceInformation = deviceInfoResponse.data[0];
-                                }
+                                logger.LogInformation(JsonConvert.SerializeObject(deviceInfoResponse.data[0]));
+                                DeviceInformation = deviceInfoResponse.data[0];
                             }
                         }
                     }
+                    return true;
                 }
-                else 
+                else
                 {
-                    logger.LogError("Failed to authenticate the user during initialisation.");
+                    return false;
                 }
             }
-            return this;
+            else 
+            {
+                logger.LogError("Failed to authenticate the user during initialisation.");
+                return false;
+            }
         }
         
         /// <summary>
@@ -250,13 +266,24 @@ namespace HuaweiSolar
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Request failed to URI: '{0}'", uri);
-                return (T)new BaseResponse
+                logger.LogDebug("The exception that occurred while sending the POST was: {0}", ex);
+                RetryCount++;
+                if (RetryCount < 5) 
                 {
-                    success = false,
-                    failCode = 1001,
-                    message = string.Format("Request failed to URI: '{0}'", uri)
-                };
+                    logger.LogWarning("There was a failed request, it is retring after 5 seconds...Retry Count: {0}", RetryCount);
+                    Thread.Sleep(5000);
+                    return await PostDataRequestAsync<T>(uri, content, cancellationToken);
+                }
+                else
+                {
+                    RetryCount = 0; //reset the retry count
+                    return (T)new BaseResponse
+                            {
+                                success = false,
+                                failCode = 1001,
+                                message = string.Format("Failed after the maximum retry count for URI: '{0}'", uri)
+                            };
+                }
             }
         }
 
@@ -271,6 +298,11 @@ namespace HuaweiSolar
             {
                 if (!CancellationTokenSource.IsCancellationRequested)
                 {
+                    while (!HuaweiPollerInititalised) 
+                    {
+                        HuaweiPollerInititalised = AuthenticateHuaweiAPI().GetAwaiter().GetResult();
+                    }
+
                     var req = new GetDevRealKpiRequest
                     {
                         devIds = DeviceInformation.id.ToString(),
