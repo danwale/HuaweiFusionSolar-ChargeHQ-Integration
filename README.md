@@ -27,6 +27,7 @@ services:
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
       - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information # Use Debug if you want to see information on message payloads
+      - TZ=Australia/Perth # If you want your logs to display in the servers local timezone rather than UTC set the TZ environment variable to suit
     volumes:
      - huaweisolar-conf:/etc/huaweisolar
 
