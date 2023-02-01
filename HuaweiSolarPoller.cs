@@ -109,7 +109,7 @@ namespace HuaweiSolar
                 if (stationListResponse.success)
                 {
                     if (stationListResponse.data != null && stationListResponse.data.Count > 0 && 
-                            stationListResponse.data[0].stationName == HuaweiConfig.StationName)
+                            stationListResponse.data[0].stationName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase))
                     {
                         // This validation isn't really needed, verifying because we have the data
                         logger.LogInformation("Station name matches");
@@ -134,7 +134,52 @@ namespace HuaweiSolar
                 }
                 else
                 {
-                    return false;
+                    if (stationListResponse.message.Equals("Invalid access to current interface!", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        logger.LogInformation("Using new station interface as the old one was not available.");
+                        GetStationsNewRequestParams requestParam = new GetStationsNewRequestParams
+                        {
+                            pageNo = 1
+                        };
+                        var requestParamContent = Utility.GetStringContent(requestParam);
+                        var newStationListResponse = await PostDataRequestAsync<GetStationListNewResponse>(GetUri(Constants.STATION_LIST_NEW_URI), requestParamContent, CancellationTokenSource.Token);
+                        if (newStationListResponse.success)
+                        {
+                            if (newStationListResponse.data != null && newStationListResponse.data.list != null && newStationListResponse.data.list.Count > 0)
+                            {
+                                if (newStationListResponse.data.list[0].plantName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase))
+                                {
+                                    // This validation isn't really needed, verifying because we have the data
+                                    logger.LogInformation("Station name matches - retrieved from new station interface");
+                                    StationCode = newStationListResponse.data.list[0].plantCode;
+
+                                    var gdlr = new GetDeviceListRequest
+                                    {
+                                        stationCodes = StationCode
+                                    };
+                                    var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI), 
+                                                    Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
+                                    if (deviceInfoResponse.success)
+                                    {
+                                        if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
+                                        {
+                                            logger.LogInformation(JsonConvert.SerializeObject(deviceInfoResponse.data));
+                                            DeviceInformation = GetInverterDeviceInfo(deviceInfoResponse.data);
+                                        }
+                                    }
+                                }
+                            }
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    else 
+                    {
+                        return false;
+                    }
                 }
             }
             else 
@@ -142,6 +187,30 @@ namespace HuaweiSolar
                 logger.LogError("Failed to authenticate the user during initialisation.");
                 return false;
             }
+        }
+
+        private DeviceInfo GetInverterDeviceInfo(IList<DeviceInfo> devices)
+        {
+            foreach (var device in devices)
+            {
+                if (device.devTypeId == 38)
+                {
+                    return device;
+                }
+            }
+            return null;
+        }
+
+        private DeviceInfo GetPowerSensorDeviceInfo(IList<DeviceInfo> devices)
+        {
+            foreach (var device in devices)
+            {
+                if (device.devTypeId == 47)
+                {
+                    return device;
+                }
+            }
+            return null;
         }
         
         /// <summary>

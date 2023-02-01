@@ -75,7 +75,10 @@ namespace HuaweiSolar
         public async Task<bool> SendData(DevRealKpiResponse data)
         {
             bool isShutdown = data.data[0].dataItemMap.inverter_state != 512;
-            logger.LogDebug("The inverter is currently shutdown due to no sunlight");
+            if (isShutdown) 
+            {
+                logger.LogDebug("The inverter is currently shutdown due to no sunlight");
+            }
 
             var totalYield = data.data[0].dataItemMap.total_cap; // this is the total lifetime energy produced by the inverter
             var smp = new SiteMeterPush

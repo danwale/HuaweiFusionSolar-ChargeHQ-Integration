@@ -9,7 +9,7 @@ namespace HuaweiSolar.Models
         public string invType {get;set;}
         public double latitude {get;set;}
         public double longitude{get;set;}
-        public int optimizerNumber {get;set;}
+        public int? optimizerNumber {get;set;}
         public string softwareVersion {get;set;}
         public string stationCode {get;set;}
     }

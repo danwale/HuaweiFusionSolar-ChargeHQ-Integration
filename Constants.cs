@@ -12,6 +12,8 @@ namespace HuaweiSolar
 
         public const string STATION_LIST_URI = "thirdData/getStationList";
 
+        public const string STATION_LIST_NEW_URI = "thirdData/stations";
+
         // can't call this more than 10 times a minute
         public const string DEV_LIST_URI = "thirdData/getDevList";
 
