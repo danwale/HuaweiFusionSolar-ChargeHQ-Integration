@@ -115,7 +115,7 @@ namespace HuaweiSolar
                     tsms = data.parameters.currentTime,
                     siteMeters = new SiteMeter
                     {
-                        production_kw = powerSensorPowerData.active_power
+                        production_kw = powerSensorPowerData.active_power / 1000 // need to convert from Watts to kilowatts
                     }
                 };
 
