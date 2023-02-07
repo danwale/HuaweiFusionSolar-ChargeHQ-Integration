@@ -2,9 +2,9 @@ using Newtonsoft.Json;
 
 namespace HuaweiSolar.Models
 {
-    public class DevRealKpiResponse : BaseResponse
+    public class DevRealKpiResponse<T> : BaseResponse where T: BaseDevRealKpiDataItemMap
     {
-        public IList<DevRealKpiData> data { get; set; }
+        public IList<DevRealKpiData<T>> data { get; set; }
 
         [JsonProperty("params")]
         public DevRealKpiParams parameters {get;set;}

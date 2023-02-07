@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace HuaweiSolar.Models
 {
-    public class DevRealKpiDataItemMap
+    public class DevRealKpiResInvDataItemMap : BaseDevRealKpiDataItemMap
     {
         public double pv1_u {get;set;}
         public double pv2_u { get; set; }

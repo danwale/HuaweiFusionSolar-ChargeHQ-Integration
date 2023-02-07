@@ -72,27 +72,61 @@ namespace HuaweiSolar
         /// <returns>
         /// True if the data was successfully pushed the ChargeHQ Push API otherwise False.
         /// </returns>
-        public async Task<bool> SendData(DevRealKpiResponse data)
+        public async Task<bool> SendData<T>(DevRealKpiResponse<T> data) where T: BaseDevRealKpiDataItemMap
         {
-            bool isShutdown = data.data[0].dataItemMap.inverter_state != 512;
-            if (isShutdown) 
+            SiteMeterPush smp = new SiteMeterPush();
+            if (typeof(T) == typeof(DevRealKpiResInvDataItemMap))
             {
-                logger.LogDebug("The inverter is currently shutdown due to no sunlight");
-            }
+                var resInverterPowerData = data.data[0].dataItemMap as DevRealKpiResInvDataItemMap;
 
-            var totalYield = data.data[0].dataItemMap.total_cap; // this is the total lifetime energy produced by the inverter
-            var smp = new SiteMeterPush
-            {
-                apiKey = ChargeHQSettings.ApiKey.ToString(),
-                tsms = data.parameters.currentTime,
-                siteMeters = new SiteMeter
+                bool isShutdown = resInverterPowerData.inverter_state != 512;
+                if (isShutdown) 
                 {
-                    production_kw = data.data[0].dataItemMap.active_power,
-                    exported_kwh = totalYield
+                    logger.LogDebug("The inverter is currently shutdown due to no sunlight");
                 }
-            };
 
-            logger.LogDebug("ChargeHQ Site Meter Push: {0}", JsonConvert.SerializeObject(smp, Formatting.None));
+                var totalYield = resInverterPowerData.total_cap; // this is the total lifetime energy produced by the inverter
+                smp = new SiteMeterPush
+                {
+                    apiKey = ChargeHQSettings.ApiKey.ToString(),
+                    tsms = data.parameters.currentTime,
+                    siteMeters = new SiteMeter
+                    {
+                        production_kw = resInverterPowerData.active_power,
+                        exported_kwh = totalYield
+                    }
+                };
+
+                logger.LogDebug("ChargeHQ Site Meter Push (Residential Inverter): {0}", JsonConvert.SerializeObject(smp, Formatting.None));
+            }
+            else if (typeof(T) == typeof(DevRealKpiPowerSensorDataItemMap))
+            {
+                var powerSensorPowerData = data.data[0].dataItemMap as DevRealKpiPowerSensorDataItemMap;
+
+                bool isOffline = powerSensorPowerData.meter_status == 0;
+                if (isOffline) 
+                {
+                    logger.LogDebug("The power sensor is currently reporting as offline.");
+                }
+
+                smp = new SiteMeterPush
+                {
+                    apiKey = ChargeHQSettings.ApiKey.ToString(),
+                    tsms = data.parameters.currentTime,
+                    siteMeters = new SiteMeter
+                    {
+                        production_kw = powerSensorPowerData.active_power
+                    }
+                };
+
+                logger.LogDebug("ChargeHQ Site Meter Push (Power Sensor): {0}", JsonConvert.SerializeObject(smp, Formatting.None));
+                return true;
+            }
+            else
+            {
+                logger.LogWarning("Failed to send data to ChargeHQ Solar Push API, the data item map was not of a valid type.");
+                return false;
+            }
 
             // Send the SiteMeterPush data model to ChargeHQ Push API
             var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(smp));
