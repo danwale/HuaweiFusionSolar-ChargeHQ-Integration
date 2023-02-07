@@ -21,7 +21,7 @@ namespace HuaweiSolar
                 return (long)0;
             }
             
-            if (objectType == typeof(string))
+            if (reader.ValueType == typeof(string))
             {
                 string value = (string)reader.Value;
                 // It was returning N/A in upper case but since they aren't matching a schema just be safe and capture anything
@@ -41,7 +41,7 @@ namespace HuaweiSolar
                     }
                 }
             }
-            else if (objectType == typeof(Int64))
+            else if (reader.ValueType == typeof(Int64))
             {
                 return reader.Value;
             }
