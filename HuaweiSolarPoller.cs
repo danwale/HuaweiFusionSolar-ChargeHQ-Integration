@@ -114,7 +114,7 @@ namespace HuaweiSolar
                         if (selectedPlant != null)
                         {
                             // In case someone has more than one plant/station in their account select the plant/station they are after
-                            logger.LogInformation("Station name matches");
+                            logger.LogInformation("Station name was found and will be used for all requests.");
                             StationCode = stationListResponse.data[0].stationCode;
 
                             var gdlr = new GetDeviceListRequest
@@ -135,10 +135,6 @@ namespace HuaweiSolar
                         else
                         {
                             logger.LogError("The station with the name '{0}' could not be found when listing the stations:", HuaweiConfig.StationName);
-                            foreach (var stationName in stationListResponse.data.Select(plant => plant.stationName))
-                            {
-                                logger.LogError(" - Plant Name: {0}", stationName);
-                            }
                             return false;
                         }
                     }
@@ -157,7 +153,7 @@ namespace HuaweiSolar
                         if (selectedPlant != null)
                         {
                             // In case someone has more than one plant/station in their account select the plant/station they are after
-                            logger.LogInformation("Station name matches - retrieved from new station interface");
+                            logger.LogInformation("Station name was found and will be used for all requests. (new interface)");
                             StationCode = selectedPlant.plantCode;
 
                             var gdlr = new GetDeviceListRequest
