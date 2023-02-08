@@ -432,7 +432,7 @@ namespace HuaweiSolar
 
                         if (powerData != null && powerData.success)
                         {
-                            if (powerData.data != null && powerData.data.Count > 0)
+                            if (powerData.data != null && powerData.data.Count > 0 && powerData.data[0].dataItemMap.inverter_state != -1)
                             {
                                 // Send active power to ChargeHQ
                                 logger.LogDebug("Sending power data to ChargeHQ.");
@@ -492,7 +492,7 @@ namespace HuaweiSolar
 
                         if (powerData != null && powerData.success)
                         {
-                            if (powerData.data != null && powerData.data.Count > 0)
+                            if (powerData.data != null && powerData.data.Count > 0 && powerData.data[0].dataItemMap.meter_status != -1)
                             {
                                 // Send active power to ChargeHQ
                                 logger.LogDebug("Sending power data to ChargeHQ.");

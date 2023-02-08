@@ -4,7 +4,7 @@ namespace HuaweiSolar.Models
 {
     public class DevRealKpiPowerSensorDataItemMap : BaseDevRealKpiDataItemMap
     {
-        public long meter_status {get;set;} // 0: Offline, 1: normal
+        public long meter_status {get;set;} = -1; // 0: Offline, 1: normal (-1 means no data returned)
 
         public double meter_u { get; set; } // Phase A voltage (AC output)
         public double meter_i { get; set; } // Phase A current of grid (IA)
