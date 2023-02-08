@@ -108,74 +108,82 @@ namespace HuaweiSolar
                 var stationListResponse = await PostDataRequestAsync<GetStationListResponse>(GetUri(Constants.STATION_LIST_URI), null, CancellationTokenSource.Token);
                 if (stationListResponse.success)
                 {
-                    if (stationListResponse.data != null && stationListResponse.data.Count > 0 &&
-                            stationListResponse.data[0].stationName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase))
+                    if (stationListResponse.data != null && stationListResponse.data.Count > 0)
                     {
-                        // This validation isn't really needed, verifying because we have the data
-                        logger.LogInformation("Station name matches");
-                        StationCode = stationListResponse.data[0].stationCode;
+                        var selectedPlant = stationListResponse.data.Where(plant => plant.stationName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
+                        if (selectedPlant != null)
+                        {
+                            // In case someone has more than one plant/station in their account select the plant/station they are after
+                            logger.LogInformation("Station name matches");
+                            StationCode = stationListResponse.data[0].stationCode;
 
-                        var gdlr = new GetDeviceListRequest
-                        {
-                            stationCodes = StationCode
-                        };
-                        var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI),
-                                        Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
-                        if (deviceInfoResponse.success)
-                        {
-                            if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
+                            var gdlr = new GetDeviceListRequest
                             {
-                                SetDeviceInfo(deviceInfoResponse.data);
-                            }
-                        }
-                    }
-                    return true;
-                }
-                else
-                {
-                    if (stationListResponse.message.Equals("Invalid access to current interface!", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        logger.LogInformation("Using new station interface as the old one was not available.");
-                        GetStationsNewRequestParams requestParam = new GetStationsNewRequestParams
-                        {
-                            pageNo = 1
-                        };
-                        var requestParamContent = Utility.GetStringContent(requestParam);
-                        var newStationListResponse = await PostDataRequestAsync<GetStationListNewResponse>(GetUri(Constants.STATION_LIST_NEW_URI), requestParamContent, CancellationTokenSource.Token);
-                        if (newStationListResponse.success)
-                        {
-                            if (newStationListResponse.data != null && newStationListResponse.data.list != null && newStationListResponse.data.list.Count > 0)
+                                stationCodes = StationCode
+                            };
+                            var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI),
+                                            Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
+                            if (deviceInfoResponse.success)
                             {
-                                if (newStationListResponse.data.list[0].plantName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase))
+                                if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
-                                    // This validation isn't really needed, verifying because we have the data
-                                    logger.LogInformation("Station name matches - retrieved from new station interface");
-                                    StationCode = newStationListResponse.data.list[0].plantCode;
-
-                                    var gdlr = new GetDeviceListRequest
-                                    {
-                                        stationCodes = StationCode
-                                    };
-                                    var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI),
-                                                    Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
-                                    if (deviceInfoResponse.success)
-                                    {
-                                        if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
-                                        {
-                                            SetDeviceInfo(deviceInfoResponse.data);
-                                        }
-                                    }
+                                    SetDeviceInfo(deviceInfoResponse.data);
                                 }
                             }
                             return true;
                         }
                         else
                         {
+                            logger.LogError("The station with the name '{0}' could not be found when listing the stations:", HuaweiConfig.StationName);
+                            foreach (var stationName in stationListResponse.data.Select(plant => plant.stationName))
+                            {
+                                logger.LogError(" - Plant Name: {0}", stationName);
+                            }
+                            return false;
+                        }
+                    }
+                    else 
+                    {
+                        logger.LogError("There were no plants/stations associated with this login.");
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (stationListResponse.failCode == 401)
+                    {
+                        logger.LogInformation("Using new station interface as the old one was not available.");
+                        var selectedPlant = await GetPlantInformation(1);
+                        if (selectedPlant != null)
+                        {
+                            // In case someone has more than one plant/station in their account select the plant/station they are after
+                            logger.LogInformation("Station name matches - retrieved from new station interface");
+                            StationCode = selectedPlant.plantCode;
+
+                            var gdlr = new GetDeviceListRequest
+                            {
+                                stationCodes = StationCode
+                            };
+                            var deviceInfoResponse = await PostDataRequestAsync<DeviceInfoResponse>(GetUri(Constants.DEV_LIST_URI),
+                                            Utility.GetStringContent(gdlr), CancellationTokenSource.Token);
+                            if (deviceInfoResponse.success)
+                            {
+                                if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
+                                {
+                                    SetDeviceInfo(deviceInfoResponse.data);
+                                }
+                            }
+                            return true;
+                        }
+                        else
+                        {
+                            logger.LogError("The station with the name '{0}' could not be found when listing the stations.", HuaweiConfig.StationName);
                             return false;
                         }
                     }
                     else
                     {
+                        logger.LogError("The reason for the failure of the original list stations interface was not 401, it was {0}", stationListResponse.failCode);
                         return false;
                     }
                 }
@@ -184,6 +192,48 @@ namespace HuaweiSolar
             {
                 logger.LogError("Failed to authenticate the user during initialisation.");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// <c>GetPlantInformation</c> - Selects the Plant/Station from the list of returned plants/stations associated with the login. 
+        /// If there is a list of stations it will request each page of plants/stations until it has been through them all looking for a match.
+        /// </summary>
+        /// <returns>The matching plant/station or null if it couldn't be found</returns>
+        private async Task<PlantInfo> GetPlantInformation(int pageNumber)
+        {
+            GetStationsNewRequestParams requestParam = new GetStationsNewRequestParams
+            {
+                pageNo = pageNumber
+            };
+            var requestParamContent = Utility.GetStringContent(requestParam);
+            var newStationListResponse = await PostDataRequestAsync<GetStationListNewResponse>(GetUri(Constants.STATION_LIST_NEW_URI), requestParamContent, CancellationTokenSource.Token);
+            if (newStationListResponse.success)
+            {
+                if (newStationListResponse.data != null && newStationListResponse.data.list != null && newStationListResponse.data.list.Count > 0)
+                {
+                    var selectedPlant = newStationListResponse.data.list.Where(plant => plant.plantName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
+                    if (selectedPlant != null)
+                    {
+                        return selectedPlant;
+                    }
+                    else if (selectedPlant == null && newStationListResponse.data.pageCount > pageNumber)
+                    {
+                        return await GetPlantInformation(pageNumber++); // see if it's on the next page of information
+                    }
+                    else
+                    {
+                        return null; // reached the last page and it's not found
+                    }
+                }
+                else
+                {
+                    return null; // this is an unexpected result, the station wasn't going to be found
+                }
+            }
+            else
+            {
+                return null; // the interface didn't return a station/plant list, it wasn't found
             }
         }
 
