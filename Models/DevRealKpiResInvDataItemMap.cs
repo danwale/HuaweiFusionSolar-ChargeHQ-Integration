@@ -48,10 +48,10 @@ namespace HuaweiSolar.Models
         public double total_cap { get; set; } // Total yield (kWh)
 
 
-        [JsonConverter(typeof(HuaweiInvalidTimeConverter))]
+        [JsonConverter(typeof(HuaweiInvalidNAValueConverter))]
         public long open_time { get; set; } // Inverter startup time (EPOCH ms)
         
-        [JsonConverter(typeof(HuaweiInvalidTimeConverter))]
+        [JsonConverter(typeof(HuaweiInvalidNAValueConverter))]
         public long close_time { get; set; } // Inverter startup time (EPOCH ms)
         
         public double mppt_1_cap { get; set; } // MPPT 1 DC total yield (kWh)
