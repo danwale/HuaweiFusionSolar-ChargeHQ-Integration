@@ -30,7 +30,7 @@ namespace HuaweiSolar
 
         public static bool WasSuccessMessage<T>(HttpResponseMessage message, out string json, out T response, CancellationToken cancellationToken) where T : BaseResponse
         {
-            json = null;
+            json = string.Empty;
             response = null;
             if (message != null)
             {
@@ -46,7 +46,7 @@ namespace HuaweiSolar
                 }
                 catch (Exception ex)
                 {
-                    Log.Logger.Warning(ex, "Failed to get a valid response from the service.");
+                    Log.Logger.Warning(ex, "Failed to get a valid response from the service. JSON: '{0}'", json);
                     return false;
                 }
             }

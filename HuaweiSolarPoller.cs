@@ -265,7 +265,7 @@ namespace HuaweiSolar
             if (!isStarted)
             {
                 isStarted = true;
-                logger.LogInformation("Starting Polling");
+                logger.LogInformation("Starting Polling. The interval is every {0}ms.", Timer.Interval);
                 Timer.Start();
 
                 //Do first poll manually

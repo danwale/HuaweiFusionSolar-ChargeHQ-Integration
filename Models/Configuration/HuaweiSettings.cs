@@ -23,9 +23,10 @@ namespace HuaweiSolar.Models.Configuration
             get; set;
         }
 
+        // This is the poll rate in minutes, Huawei ask for this to be 5 minutes
         public int PollRate
         {
             get; set;
-        }
+        } = 5;
     }
 }

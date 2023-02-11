@@ -7,7 +7,7 @@ namespace HuaweiSolar.Models.Configuration
             get; set;
         }
 
-        public Guid ApiKey
+        public Guid? ApiKey
         {
             get; set;
         }
