@@ -309,7 +309,7 @@ namespace HuaweiSolar
                 if (stringInverter != null)
                 {
                     Inverter = stringInverter;
-                    logger.LogDebug("Found a string inverter with ID: {0}", residentialInverter.id);
+                    logger.LogDebug("Found a string inverter with ID: {0}", stringInverter.id);
                 }
                 else
                 {
