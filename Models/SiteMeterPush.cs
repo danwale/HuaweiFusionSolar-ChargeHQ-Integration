@@ -25,7 +25,8 @@ namespace HuaweiSolar.Models
     public class SiteMeter
     {
         // if solar is present, provide the following field
-        public double production_kw { get; set; }
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public double? production_kw { get; set; } = null;
 
         // if a consumption meter is present, the following fields should be set
         //grid import, negative means export

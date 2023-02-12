@@ -30,7 +30,17 @@ namespace HuaweiSolar
             get; set;
         }
 
-        private HuaweiSettings HuaweiConfig
+        private HuaweiSettings HuaweiSettings
+        {
+            get; set;
+        }
+
+        private ChargeHQSettings ChargeHQSettings
+        {
+            get; set;
+        }
+
+        private string ChargeHQApiKey
         {
             get; set;
         }
@@ -40,7 +50,12 @@ namespace HuaweiSolar
             get; set;
         }
 
-        private DeviceInfo DeviceInformation
+        private DeviceInfo ReidentialInverter
+        {
+            get; set;
+        }
+
+        private DeviceInfo PowerSensor
         {
             get; set;
         }
@@ -77,9 +92,14 @@ namespace HuaweiSolar
             {
                 initialised = true;
                 CancellationTokenSource = cancellationTokenSource;
-                HuaweiConfig = configuration.GetSection(Constants.HUAWEI_CONFIG_SECTION).Get<HuaweiSettings>();
+                HuaweiSettings = configuration.GetSection(Constants.HUAWEI_CONFIG_SECTION).Get<HuaweiSettings>();
+                ChargeHQSettings = configuration.GetSection(Constants.CHARGE_HQ_CONFIG_SECION).Get<ChargeHQSettings>();
+                if (ChargeHQSettings.ApiKey != null && ChargeHQSettings.ApiKey != default(Guid))
+                {
+                    ChargeHQApiKey = ChargeHQSettings.ApiKey.Value.ToString();
+                }
 
-                Timer = new Timer(HuaweiConfig.PollRate * 60000);
+                Timer = new Timer(HuaweiSettings.PollRate * 60000);
                 Timer.Enabled = false;
                 Timer.AutoReset = true;
                 Timer.Elapsed += PollGenerationStatistics_Elapsed;
@@ -110,7 +130,7 @@ namespace HuaweiSolar
                 {
                     if (stationListResponse.data != null && stationListResponse.data.Count > 0)
                     {
-                        var selectedPlant = stationListResponse.data.Where(plant => plant.stationName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
+                        var selectedPlant = stationListResponse.data.Where(plant => plant.stationName.Equals(HuaweiSettings.StationName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
                         if (selectedPlant != null)
                         {
                             // In case someone has more than one plant/station in their account select the plant/station they are after
@@ -134,7 +154,7 @@ namespace HuaweiSolar
                         }
                         else
                         {
-                            logger.LogError("The station with the name '{0}' could not be found when listing the stations:", HuaweiConfig.StationName);
+                            logger.LogError("The station with the name '{0}' could not be found when listing the stations:", HuaweiSettings.StationName);
                             return false;
                         }
                     }
@@ -173,7 +193,7 @@ namespace HuaweiSolar
                         }
                         else
                         {
-                            logger.LogError("The station with the name '{0}' could not be found when listing the stations.", HuaweiConfig.StationName);
+                            logger.LogError("The station with the name '{0}' could not be found when listing the stations.", HuaweiSettings.StationName);
                             return false;
                         }
                     }
@@ -208,7 +228,7 @@ namespace HuaweiSolar
             {
                 if (newStationListResponse.data != null && newStationListResponse.data.list != null && newStationListResponse.data.list.Count > 0)
                 {
-                    var selectedPlant = newStationListResponse.data.list.Where(plant => plant.plantName.Equals(HuaweiConfig.StationName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
+                    var selectedPlant = newStationListResponse.data.list.Where(plant => plant.plantName.Equals(HuaweiSettings.StationName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
                     if (selectedPlant != null)
                     {
                         return selectedPlant;
@@ -234,12 +254,9 @@ namespace HuaweiSolar
         }
 
         /// <summary>
-        /// <c>SetDeviceInfo</c> - Selects the device that will give the best excess solar information.
-        /// If there is a Power Sensor device that will actively monitor the power usage of the premises
-        /// so it will accurately know what power is excess from solar and what is required by the premises.
-        /// If there is no Power Sensor device the best estimate of excess solar is the amount being produced
-        /// by the Inverter device and it's up to the ChargeHQ configuration to choose Solar Tracking Margin
-        /// that safely accounts for what the premises might be drawing from the system.
+        /// <c>SetDeviceInfo</c> - Gets the Residential Inverter and the Power Sensor devices out of the returned
+        /// plant devices.
+        /// TODO: Add support for battery monitoring as well
         /// </summary>
         private void SetDeviceInfo(IList<DeviceInfo> devices)
         {
@@ -248,12 +265,23 @@ namespace HuaweiSolar
             if (powerSensor != null)
             {
                 // If the setup has a power sensor use that for the accurate excess solar information
-                DeviceInformation = powerSensor;
+                PowerSensor = powerSensor;
+                logger.LogDebug("Found a power sensor with ID: {0}", powerSensor.id);
             }
             else
             {
-                // If there is no power sensor then use the Inverter
-                DeviceInformation = devices.Where(device => device.devTypeId == 38).FirstOrDefault();
+                logger.LogDebug("There was no power sensor found, this is optional for riche  solar monitoring data.");
+            }
+
+            var residentialInverter = devices.Where(device => device.devTypeId == 38).FirstOrDefault();
+            if (residentialInverter != null)
+            {
+                ReidentialInverter = residentialInverter;
+                logger.LogDebug("Found a residential inverter with ID: {0}", residentialInverter.id);
+            }
+            else
+            {
+                logger.LogError("There was no residential inverter found, the integration relies on this existing.");
             }
         }
 
@@ -297,8 +325,8 @@ namespace HuaweiSolar
             {
                 LoginCredentialRequest lcr = new LoginCredentialRequest
                 {
-                    userName = HuaweiConfig.Username,
-                    systemCode = HuaweiConfig.Password
+                    userName = HuaweiSettings.Username,
+                    systemCode = HuaweiSettings.Password
                 };
                 var content = Utility.GetStringContent(lcr);
                 var response = await PostDataRequestAsync<BaseResponse>(GetUri(Constants.LOGIN_URI), content, cancellationToken);
@@ -306,7 +334,7 @@ namespace HuaweiSolar
                 {
                     logger.LogInformation("Successfully did login and got back cookie");
                     bool cookieFound = false;
-                    foreach (Cookie cookie in _handler.CookieContainer.GetCookies(new Uri(HuaweiConfig.BaseURI)).Cast<Cookie>())
+                    foreach (Cookie cookie in _handler.CookieContainer.GetCookies(new Uri(HuaweiSettings.BaseURI)).Cast<Cookie>())
                     {
                         if (cookie.Name == "XSRF-TOKEN")
                         {
@@ -416,62 +444,107 @@ namespace HuaweiSolar
                         HuaweiPollerInititalised = AuthenticateHuaweiAPI().GetAwaiter().GetResult();
                     }
 
+                    SiteMeterPush pushData = new SiteMeterPush
+                    {
+                        apiKey = ChargeHQApiKey,
+                        siteMeters = new SiteMeter()
+                    }; 
+
+                    // Request the Residential Inverters power data to get how much production is happening
                     var requestParam = new GetDevRealKpiRequest
                     {
-                        devIds = DeviceInformation.id.ToString(),
-                        devTypeId = DeviceInformation.devTypeId
+                        devIds = ReidentialInverter.id.ToString(),
+                        devTypeId = ReidentialInverter.devTypeId
                     };
-                    if (DeviceInformation.devTypeId == 38)
+                    var powerData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiResInvDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
+                                                                            Utility.GetStringContent(requestParam),
+                                                                            CancellationTokenSource.Token).GetAwaiter().GetResult();
+                    if (powerData != null && powerData.success && powerData.data != null && 
+                        powerData.data.Count > 0 && powerData.data[0].dataItemMap.inverter_state != -1)
                     {
-                        var powerData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiResInvDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(requestParam),
-                                                                                CancellationTokenSource.Token).GetAwaiter().GetResult();
-
-                        if (powerData != null && powerData.success)
+                        var resInverterPowerData = powerData.data[0].dataItemMap as DevRealKpiResInvDataItemMap;
+                        if (resInverterPowerData.active_power.HasValue)
                         {
-                            if (powerData.data != null && powerData.data.Count > 0 && powerData.data[0].dataItemMap.inverter_state != -1)
+                            pushData.tsms = powerData.parameters.currentTime;
+                            pushData.siteMeters.production_kw = resInverterPowerData.active_power.Value;
+                            pushData.siteMeters.exported_kwh = resInverterPowerData.total_cap; // this is the total lifetime energy produced by the inverter
+
+                            bool isShutdown = resInverterPowerData.inverter_state != 512;
+                            if (isShutdown) 
                             {
-                                // Send active power to ChargeHQ
-                                logger.LogDebug("Sending power data to ChargeHQ.");
-                                bool successfullySent = this.chargeHqSender.SendData(powerData).GetAwaiter().GetResult();
-                                if (successfullySent)
+                                logger.LogDebug("The inverter is currently shutdown due to no sunlight");
+                            }
+
+                            // If there is a Power Sensor device enrich the ChargeHQ Push Data with the consumption meter fields
+                            if (PowerSensor != null)
+                            {
+                                var powerSensorRequestParam = new GetDevRealKpiRequest
                                 {
-                                    logger.LogDebug("Sent the data successfully to ChargeHQ.");
-                                }
-                                else
+                                    devIds = PowerSensor.id.ToString(),
+                                    devTypeId = PowerSensor.devTypeId
+                                };
+                                var powerSensorData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiPowerSensorDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
+                                                                                        Utility.GetStringContent(powerSensorRequestParam),
+                                                                                        CancellationTokenSource.Token).GetAwaiter().GetResult();
+                                if (powerSensorData != null && powerSensorData.success && 
+                                    powerSensorData.data != null && powerSensorData.data.Count > 0 && powerSensorData.data[0].dataItemMap.meter_status != -1)
                                 {
-                                    logger.LogError("Failed to send the data to ChargeHQ.");
+                                    var powerSensorPowerData = powerSensorData.data[0].dataItemMap as DevRealKpiPowerSensorDataItemMap;
+
+                                    bool isOffline = powerSensorPowerData.meter_status == 0;
+                                    if (isOffline) 
+                                    {
+                                        logger.LogDebug("The power sensor is currently reporting as offline.");
+                                    }
+                                    else
+                                    {
+                                        if (powerSensorPowerData.active_power.HasValue)
+                                        {
+                                            pushData.siteMeters.net_import_kw = -1 * (powerSensorPowerData.active_power.Value / 1000);
+                                            pushData.siteMeters.consumption_kw = pushData.siteMeters.production_kw - (powerSensorPowerData.active_power.Value / 1000);
+
+                                            // With the Power Sensor it measures the amount of power exported/imported a positive active_cap will be exported
+                                            if (powerSensorPowerData.active_cap.HasValue && powerSensorPowerData.active_cap > 0)
+                                            {
+                                                pushData.siteMeters.exported_kwh = powerSensorPowerData.active_cap; // this is the lifetime amount of energy exported
+                                            }                                            
+                                        }
+                                    }
                                 }
+                                else 
+                                {
+                                    logger.LogWarning("The power sensor power data returned from Huawei's Fusion Solar was not valid.");
+                                    bool sentErrorDataSuccess = this.chargeHqSender.SendErrorData("Huawei's FusionSolar power sensor power data was not in an expected format.")
+                                                                                                .GetAwaiter().GetResult();
+                                    if (sentErrorDataSuccess)
+                                    {
+                                        logger.LogDebug("Sent the error data successfully to ChargeHQ.");
+                                    }
+                                    else
+                                    {
+                                        logger.LogError("Failed to send the error data to ChargeHQ.");
+                                    }
+                                }
+                            }
+
+                            // Send active power to ChargeHQ
+                            logger.LogDebug("Sending power data to ChargeHQ.");
+                            bool successfullySent = this.chargeHqSender.SendData(pushData).GetAwaiter().GetResult();
+                            if (successfullySent)
+                            {
+                                logger.LogDebug("Sent the data successfully to ChargeHQ.");
                             }
                             else
                             {
-                                logger.LogWarning("The power data returned from Huawei's Fusion Solar was not valid.");
-                                bool successfullySent = this.chargeHqSender.SendErrorData("Huawei's FusionSolar power data was not in an expected format")
-                                                                                            .GetAwaiter().GetResult();
-                                if (successfullySent)
-                                {
-                                    logger.LogDebug("Sent the error data successfully to ChargeHQ.");
-                                }
-                                else
-                                {
-                                    logger.LogError("Failed to send the error data to ChargeHQ.");
-                                }
+                                logger.LogError("Failed to send the data to ChargeHQ.");
                             }
                         }
-                        else
+                        else 
                         {
-                            if (powerData == null)
-                            {
-                                powerData = new DevRealKpiResponse<DevRealKpiResInvDataItemMap>
-                                {
-                                    success = false,
-                                    failCode = 1002,
-                                    message = "The returned power data from Huawei was null"
-                                };
-                            }
-                            logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
-                            bool successfullySent = this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}")
-                                                                                        .GetAwaiter().GetResult();
-                            if (successfullySent)
+                            logger.LogInformation("There was no active_power value from the residential inverter so no data was sent to ChargeHQ.");
+                            bool sentErrorDataSuccess = this.chargeHqSender.SendErrorData("Huawei's FusionSolar did not return any production output from the residential inverter.")
+                                                                                                .GetAwaiter().GetResult();
+                            if (sentErrorDataSuccess)
                             {
                                 logger.LogDebug("Sent the error data successfully to ChargeHQ.");
                             }
@@ -481,64 +554,18 @@ namespace HuaweiSolar
                             }
                         }
                     }
-                    else if (DeviceInformation.devTypeId == 47)
+                    else 
                     {
-                        var powerData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiPowerSensorDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), Utility.GetStringContent(requestParam),
-                                                                                CancellationTokenSource.Token).GetAwaiter().GetResult();
-
-                        if (powerData != null && powerData.success)
+                        logger.LogWarning("The residential inverter power data returned from Huawei's Fusion Solar was not valid.");
+                        bool successfullySent = this.chargeHqSender.SendErrorData("Huawei's FusionSolar residential inverter power data was not in an expected format.")
+                                                                                    .GetAwaiter().GetResult();
+                        if (successfullySent)
                         {
-                            if (powerData.data != null && powerData.data.Count > 0 && powerData.data[0].dataItemMap.meter_status != -1)
-                            {
-                                // Send active power to ChargeHQ
-                                logger.LogDebug("Sending power data to ChargeHQ.");
-                                bool successfullySent = this.chargeHqSender.SendData(powerData).GetAwaiter().GetResult();
-                                if (successfullySent)
-                                {
-                                    logger.LogDebug("Sent the data successfully to ChargeHQ.");
-                                }
-                                else
-                                {
-                                    logger.LogError("Failed to send the data to ChargeHQ.");
-                                }
-                            }
-                            else
-                            {
-                                logger.LogWarning("The power data returned from Huawei's Fusion Solar was not valid.");
-                                bool successfullySent = this.chargeHqSender.SendErrorData("Huawei's FusionSolar power data was not in an expected format")
-                                                                                            .GetAwaiter().GetResult();
-                                if (successfullySent)
-                                {
-                                    logger.LogDebug("Sent the error data successfully to ChargeHQ.");
-                                }
-                                else
-                                {
-                                    logger.LogError("Failed to send the error data to ChargeHQ.");
-                                }
-                            }
+                            logger.LogDebug("Sent the error data successfully to ChargeHQ.");
                         }
                         else
                         {
-                            if (powerData == null)
-                            {
-                                powerData = new DevRealKpiResponse<DevRealKpiPowerSensorDataItemMap>
-                                {
-                                    success = false,
-                                    failCode = 1002,
-                                    message = "The returned power data from Huawei was null"
-                                };
-                            }
-                            logger.LogWarning($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}");
-                            bool successfullySent = this.chargeHqSender.SendErrorData($"Huawei's FusionSolar API returned a fail code: {powerData.failCode}, message: {powerData.message}")
-                                                                                        .GetAwaiter().GetResult();
-                            if (successfullySent)
-                            {
-                                logger.LogDebug("Sent the error data successfully to ChargeHQ.");
-                            }
-                            else
-                            {
-                                logger.LogError("Failed to send the error data to ChargeHQ.");
-                            }
+                            logger.LogError("Failed to send the error data to ChargeHQ.");
                         }
                     }
                 }
@@ -569,11 +596,11 @@ namespace HuaweiSolar
             {
                 methodUri = methodUri.TrimStart('/');
             }
-            if (HuaweiConfig.BaseURI.EndsWith("/"))
+            if (HuaweiSettings.BaseURI.EndsWith("/"))
             {
-                HuaweiConfig.BaseURI = HuaweiConfig.BaseURI.TrimEnd('/');
+                HuaweiSettings.BaseURI = HuaweiSettings.BaseURI.TrimEnd('/');
             }
-            return string.Format("{0}/{1}", HuaweiConfig.BaseURI, methodUri);
+            return string.Format("{0}/{1}", HuaweiSettings.BaseURI, methodUri);
         }
     }
 }

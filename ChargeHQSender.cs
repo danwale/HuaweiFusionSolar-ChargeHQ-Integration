@@ -80,93 +80,13 @@ namespace HuaweiSolar
         /// <returns>
         /// True if the data was successfully pushed the ChargeHQ Push API otherwise False.
         /// </returns>
-        public async Task<bool> SendData<T>(DevRealKpiResponse<T> data) where T: BaseDevRealKpiDataItemMap
+        public async Task<bool> SendData(SiteMeterPush data)
         {
             if (ChargeHQSettings.ApiKey != null && ChargeHQSettings.ApiKey != default(Guid))
             {
-                SiteMeterPush smp = new SiteMeterPush();
-                if (typeof(T) == typeof(DevRealKpiResInvDataItemMap))
-                {
-                    var resInverterPowerData = data.data[0].dataItemMap as DevRealKpiResInvDataItemMap;
-
-                    if (resInverterPowerData.active_power.HasValue)
-                    {
-                        bool isShutdown = resInverterPowerData.inverter_state != 512;
-                        if (isShutdown) 
-                        {
-                            logger.LogDebug("The inverter is currently shutdown due to no sunlight");
-                        }
-
-                        var totalYield = resInverterPowerData.total_cap; // this is the total lifetime energy produced by the inverter
-                        smp = new SiteMeterPush
-                        {
-                            apiKey = ChargeHQSettings.ApiKey.ToString(),
-                            tsms = data.parameters.currentTime,
-                            siteMeters = new SiteMeter
-                            {
-                                production_kw = resInverterPowerData.active_power.Value,
-                                exported_kwh = totalYield
-                            }
-                        };
-
-                        logger.LogDebug("ChargeHQ Site Meter Push (Residential Inverter): {0}", JsonConvert.SerializeObject(smp, Formatting.None));
-                    }
-                    else
-                    {
-                        logger.LogWarning("The active_power attribute did not have a value so the data could not be pushed to ChargeHQ");
-                        await SendErrorData("The Residential Inverter's active_power was not being reported by Huawei");
-                        return false;
-                    }
-                }
-                else if (typeof(T) == typeof(DevRealKpiPowerSensorDataItemMap))
-                {
-                    var powerSensorPowerData = data.data[0].dataItemMap as DevRealKpiPowerSensorDataItemMap;
-
-                    if (powerSensorPowerData.active_power.HasValue) 
-                    {
-                        bool isOffline = powerSensorPowerData.meter_status == 0;
-                        if (isOffline) 
-                        {
-                            logger.LogDebug("The power sensor is currently reporting as offline.");
-                        }
-
-                        var activePower = powerSensorPowerData.active_power.Value;
-                        if (activePower < 0)
-                        {
-                            // when it goes into negatives there is less solar generation than the house is consuming
-                            // so it's drawing from the grid, rather than report a negative amount to ChargeHQ we'll report no 
-                            // power production and that will stop the charging.
-                            activePower = 0;
-                        }
-
-                        smp = new SiteMeterPush
-                        {
-                            apiKey = ChargeHQSettings.ApiKey.ToString(),
-                            tsms = data.parameters.currentTime,
-                            siteMeters = new SiteMeter
-                            {
-                                production_kw = activePower / 1000 // need to convert from Watts to kilowatts
-                            }
-                        };
-
-                        logger.LogDebug("ChargeHQ Site Meter Push (Power Sensor): {0}", JsonConvert.SerializeObject(smp, Formatting.None));
-                        return true;
-                    }
-                    else
-                    {
-                        logger.LogWarning("The active_power attribute did not have a value so the data could not be pushed to ChargeHQ");
-                        await SendErrorData("The Power Sensor's active_power was not being reported by Huawei");
-                        return false;
-                    }
-                }
-                else
-                {
-                    logger.LogWarning("Failed to send data to ChargeHQ Solar Push API, the data item map was not of a valid type.");
-                    return false;
-                }
-
                 // Send the SiteMeterPush data model to ChargeHQ Push API
-                var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(smp));
+                logger.LogDebug("ChargeHQ Site Meter Push: {0}", JsonConvert.SerializeObject(data, Formatting.None));
+                var response = await _client.PostAsync(ChargeHQSettings.PushURI, Utility.GetStringContent(data));
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     logger.LogInformation("Successfully sent data to ChargeHQ Solar Push API.");
