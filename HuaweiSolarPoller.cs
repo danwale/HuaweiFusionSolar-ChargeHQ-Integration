@@ -50,7 +50,7 @@ namespace HuaweiSolar
             get; set;
         }
 
-        private DeviceInfo ReidentialInverter
+        private DeviceInfo Inverter
         {
             get; set;
         }
@@ -147,7 +147,11 @@ namespace HuaweiSolar
                             {
                                 if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
-                                    SetDeviceInfo(deviceInfoResponse.data);
+                                    bool foundInverter = SetDeviceInfo(deviceInfoResponse.data);
+                                    if (!foundInverter)
+                                    {
+                                        return false;
+                                    }
                                 }
                             }
                             return true;
@@ -186,7 +190,11 @@ namespace HuaweiSolar
                             {
                                 if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
-                                    SetDeviceInfo(deviceInfoResponse.data);
+                                    bool foundInverter = SetDeviceInfo(deviceInfoResponse.data);
+                                    if (!foundInverter)
+                                    {
+                                        return false;
+                                    }
                                 }
                             }
                             return true;
@@ -258,7 +266,8 @@ namespace HuaweiSolar
         /// plant devices.
         /// TODO: Add support for battery monitoring as well
         /// </summary>
-        private void SetDeviceInfo(IList<DeviceInfo> devices)
+        /// <returns>true if the inverter was found</returns>
+        private bool SetDeviceInfo(IList<DeviceInfo> devices)
         {
             logger.LogInformation("Detected Devices: " + JsonConvert.SerializeObject(devices));
             var powerSensor = devices.Where(device => device.devTypeId == 47).FirstOrDefault();
@@ -276,12 +285,29 @@ namespace HuaweiSolar
             var residentialInverter = devices.Where(device => device.devTypeId == 38).FirstOrDefault();
             if (residentialInverter != null)
             {
-                ReidentialInverter = residentialInverter;
+                Inverter = residentialInverter;
                 logger.LogDebug("Found a residential inverter with ID: {0}", residentialInverter.id);
             }
             else
             {
-                logger.LogError("There was no residential inverter found, the integration relies on this existing.");
+                var stringInverter = devices.Where(device => device.devTypeId == 1).FirstOrDefault();
+                if (stringInverter != null)
+                {
+                    Inverter = stringInverter;
+                    logger.LogDebug("Found a string inverter with ID: {0}", residentialInverter.id);
+                }
+                else
+                {
+                    logger.LogError("No string or residential inverter was found, this is a mandatory requirement to use this system.");
+                }
+            }
+            if (Inverter != null) 
+            {
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
@@ -453,23 +479,61 @@ namespace HuaweiSolar
                     // Request the Residential Inverters power data to get how much production is happening
                     var requestParam = new GetDevRealKpiRequest
                     {
-                        devIds = ReidentialInverter.id.ToString(),
-                        devTypeId = ReidentialInverter.devTypeId
+                        devIds = Inverter.id.ToString(),
+                        devTypeId = Inverter.devTypeId
                     };
-                    var powerData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiResInvDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
+                    DevRealKpiResponse<DevRealKpiResInvDataItemMap> residentialPowerData = null;
+                    DevRealKpiResponse<DevRealKpiStrInvDataItemMap> stringPowerData = null;
+
+                    long timestamp = -1;
+                    double? active_power = null;
+                    double? total_cap = null;
+                    double inverter_state = -1;
+                    bool inverterDataFound = false;
+                    if (Inverter.devTypeId == 1)
+                    {
+                        logger.LogDebug("Getting String Inverter Power Data.");
+                        stringPowerData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiStrInvDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
                                                                             Utility.GetStringContent(requestParam),
                                                                             CancellationTokenSource.Token).GetAwaiter().GetResult();
-                    if (powerData != null && powerData.success && powerData.data != null && 
-                        powerData.data.Count > 0 && powerData.data[0].dataItemMap.inverter_state != -1)
-                    {
-                        var resInverterPowerData = powerData.data[0].dataItemMap as DevRealKpiResInvDataItemMap;
-                        if (resInverterPowerData.active_power.HasValue)
+                        if (stringPowerData != null && stringPowerData.success && stringPowerData.data != null &&
+                            stringPowerData.data.Count > 0 && stringPowerData.data[0].dataItemMap.inverter_state != -1)
                         {
-                            pushData.tsms = powerData.parameters.currentTime;
-                            pushData.siteMeters.production_kw = resInverterPowerData.active_power.Value;
-                            pushData.siteMeters.exported_kwh = resInverterPowerData.total_cap; // this is the total lifetime energy produced by the inverter
+                            var stringInverterPowerData = stringPowerData.data[0].dataItemMap as DevRealKpiStrInvDataItemMap;
+                            timestamp = stringPowerData.parameters.currentTime;
+                            active_power = stringInverterPowerData.active_power;
+                            total_cap = stringInverterPowerData.total_cap;
+                            inverter_state = stringInverterPowerData.inverter_state;
+                            inverterDataFound = true;
+                        }
+                    }
+                    else if (Inverter.devTypeId == 38)
+                    {
+                        logger.LogDebug("Getting Residential Inverter Power Data.");
+                        residentialPowerData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiResInvDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
+                                                                            Utility.GetStringContent(requestParam),
+                                                                            CancellationTokenSource.Token).GetAwaiter().GetResult();
+                        if (residentialPowerData != null && residentialPowerData.success && residentialPowerData.data != null &&
+                            residentialPowerData.data.Count > 0 && residentialPowerData.data[0].dataItemMap.inverter_state != -1)
+                        {
+                            var residentialInverterPowerData = residentialPowerData.data[0].dataItemMap as DevRealKpiResInvDataItemMap;
+                            timestamp = residentialPowerData.parameters.currentTime;
+                            active_power = residentialInverterPowerData.active_power;
+                            total_cap = residentialInverterPowerData.total_cap;
+                            inverter_state = residentialInverterPowerData.inverter_state;
+                            inverterDataFound = true;
+                        }
+                    }
+                    
+                    if (inverterDataFound)
+                    {
+                        if (active_power.HasValue)
+                        {
+                            pushData.tsms = timestamp;
+                            pushData.siteMeters.production_kw = active_power;
+                            pushData.siteMeters.exported_kwh = total_cap; // this is the total lifetime energy produced by the inverter
 
-                            bool isShutdown = resInverterPowerData.inverter_state != 512;
+                            bool isShutdown = inverter_state != 512;
                             if (isShutdown) 
                             {
                                 logger.LogDebug("The inverter is currently shutdown due to no sunlight");
@@ -541,8 +605,8 @@ namespace HuaweiSolar
                         }
                         else 
                         {
-                            logger.LogInformation("There was no active_power value from the residential inverter so no data was sent to ChargeHQ.");
-                            bool sentErrorDataSuccess = this.chargeHqSender.SendErrorData("Huawei's FusionSolar did not return any production output from the residential inverter.")
+                            logger.LogInformation("There was no active_power value from the inverter so no data was sent to ChargeHQ.");
+                            bool sentErrorDataSuccess = this.chargeHqSender.SendErrorData("Huawei's FusionSolar did not return any production output from the inverter.")
                                                                                                 .GetAwaiter().GetResult();
                             if (sentErrorDataSuccess)
                             {
