@@ -60,6 +60,11 @@ namespace HuaweiSolar
             get; set;
         }
 
+        private DeviceInfo Battery
+        {
+            get; set;
+        }
+
         private Timer Timer
         {
             get; set;
@@ -147,7 +152,7 @@ namespace HuaweiSolar
                             {
                                 if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
-                                    bool foundInverter = SetDeviceInfo(deviceInfoResponse.data);
+                                    bool foundInverter = SetDeviceInfos(deviceInfoResponse.data);
                                     if (!foundInverter)
                                     {
                                         return false;
@@ -190,7 +195,7 @@ namespace HuaweiSolar
                             {
                                 if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
-                                    bool foundInverter = SetDeviceInfo(deviceInfoResponse.data);
+                                    bool foundInverter = SetDeviceInfos(deviceInfoResponse.data);
                                     if (!foundInverter)
                                     {
                                         return false;
@@ -263,11 +268,10 @@ namespace HuaweiSolar
 
         /// <summary>
         /// <c>SetDeviceInfo</c> - Gets the Residential Inverter and the Power Sensor devices out of the returned
-        /// plant devices.
-        /// TODO: Add support for battery monitoring as well
+        /// plant devices. It will also find any residential batteries to monitor.
         /// </summary>
         /// <returns>true if the inverter was found</returns>
-        private bool SetDeviceInfo(IList<DeviceInfo> devices)
+        private bool SetDeviceInfos(IList<DeviceInfo> devices)
         {
             logger.LogInformation("Detected Devices: " + JsonConvert.SerializeObject(devices));
             var powerSensor = devices.Where(device => device.devTypeId == 47).FirstOrDefault();
@@ -279,7 +283,18 @@ namespace HuaweiSolar
             }
             else
             {
-                logger.LogDebug("There was no power sensor found, this is optional for riche  solar monitoring data.");
+                logger.LogDebug("There was no power sensor found, this is optional for richer solar monitoring data.");
+            }
+
+            var battery = devices.Where(device => device.devTypeId == 39).FirstOrDefault();
+            if (battery != null)
+            {
+                Battery = battery;
+                logger.LogDebug("Found a residential battery with ID: {0}", battery.id);
+            }
+            else
+            {
+                logger.LogDebug("There was no residential battery detected in the system, this is optionally supported.");
             }
 
             var residentialInverter = devices.Where(device => device.devTypeId == 38).FirstOrDefault();
@@ -587,6 +602,47 @@ namespace HuaweiSolar
                                     else
                                     {
                                         logger.LogError("Failed to send the error data to ChargeHQ.");
+                                    }
+                                }
+                            }
+
+                            if (Battery != null)
+                            {
+                                var batteryReqestParams = new GetDevRealKpiRequest
+                                {
+                                    devIds = Battery.id.ToString(),
+                                    devTypeId = Battery.devTypeId
+                                };
+                                var batteryData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiBattDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
+                                                                                        Utility.GetStringContent(batteryReqestParams),
+                                                                                        CancellationTokenSource.Token).GetAwaiter().GetResult();
+                                if (batteryData != null && batteryData.success && 
+                                    batteryData.data != null && batteryData.data.Count > 0 && batteryData.data[0].dataItemMap.battery_status != -1)
+                                {
+                                    var batteryPowerData = batteryData.data[0].dataItemMap as DevRealKpiBattDataItemMap;
+                                    
+                                    bool isOffline = batteryPowerData.battery_status == 0;
+                                    if (isOffline)
+                                    {
+                                        logger.LogDebug("The residential battery is currently reporting as offline.");
+                                    }
+                                    else
+                                    {
+                                        double? battery_soc = null;
+                                        if (batteryPowerData.battery_soc > 1)
+                                        {
+                                            // TODO: Remove this logic after capturing the debug output and settling on what Huawei send
+                                            logger.LogInformation("The battery SOC was being reported as a double between 0 and 100");
+                                            battery_soc = batteryPowerData.battery_soc / 100;
+                                        }
+                                        else
+                                        {
+                                            logger.LogInformation("The battery SOC was being reported as a double between 0 and 1");
+                                            battery_soc = batteryPowerData.battery_soc;
+                                        }
+                                        pushData.siteMeters.battery_soc = battery_soc;
+                                        pushData.siteMeters.battery_energy_kwh = batteryPowerData.charge_cap;
+                                        pushData.siteMeters.battery_discharge_kw = batteryPowerData.ch_discharge_power;
                                     }
                                 }
                             }
