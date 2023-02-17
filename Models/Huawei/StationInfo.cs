@@ -1,4 +1,4 @@
-namespace HuaweiSolar.Models
+namespace HuaweiSolar.Models.Huawei
 {
     public class StationInfo
     {
@@ -12,6 +12,4 @@ namespace HuaweiSolar.Models
         public string stationLinkman {get;set;}
         public string stationName {get;set;}
     }
-
-    
 }

@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 using Serilog;
 
-using HuaweiSolar.Models;
+using HuaweiSolar.Models.Huawei;
 
 namespace HuaweiSolar
 {

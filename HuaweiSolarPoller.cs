@@ -6,8 +6,9 @@ using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
-using HuaweiSolar.Models;
+using HuaweiSolar.Models.ChargeHQ;
 using HuaweiSolar.Models.Configuration;
+using HuaweiSolar.Models.Huawei;
 
 using Timer = System.Timers.Timer;
 

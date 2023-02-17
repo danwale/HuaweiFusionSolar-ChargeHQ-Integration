@@ -1,4 +1,4 @@
-namespace HuaweiSolar.Models
+namespace HuaweiSolar.Models.Huawei
 {
     public class LoginCredentialRequest
     {

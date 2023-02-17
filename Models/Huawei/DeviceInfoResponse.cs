@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace HuaweiSolar.Models
+namespace HuaweiSolar.Models.Huawei
 {
     public class DeviceInfoResponse : BaseResponse
     {
