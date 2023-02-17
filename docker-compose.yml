@@ -6,10 +6,13 @@ services:
     restart: always
     environment:
       - HUAWEI__BASEURI=https://intl.fusionsolar.huawei.com/
-      - HUAWEI__USERNAME= #insert the username Huawei have provided
-      - HUAWEI__PASSWORD= #insert the system code/password Huawei have issued
+      - HUAWEI__USERNAME= #insert the username Huawei or your installer have provided
+      - HUAWEI__PASSWORD= #insert the system code/password Huawei or your installer have issued
       - HUAWEI__STATIONNAME= #insert the plant/station name here
       - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
+      - HUAWEI__USEPOWERSENSORDATA=true #true or false value, if a power sensor is present should its data be collected and passed on
+      - HUAWEI__USEGRIDMETERDATA=true #true or false value, if a grid meter is present should its data be collected and passed on
+      - HUAWEI__USEBATTERYDATA=true #true or false value, if a battery is present should its data be collected and passed on
       - CHARGEHQ__APIKEY= #insert your ChargeHQ API Key here
       - SERILOG__MINIMUMLEVEL=Information
     volumes:

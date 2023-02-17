@@ -61,6 +61,11 @@ namespace HuaweiSolar
             get; set;
         }
 
+        private DeviceInfo GridMeter
+        {
+            get; set;
+        }
+
         private DeviceInfo Battery
         {
             get; set;
@@ -285,6 +290,17 @@ namespace HuaweiSolar
             else
             {
                 logger.LogDebug("There was no power sensor found, this is optional for richer solar monitoring data.");
+            }
+
+            var gridMeter = devices.Where(device => device.devTypeId == 17).FirstOrDefault();
+            if (gridMeter != null)
+            {
+                GridMeter = gridMeter;
+                logger.LogDebug("Found a grid meter with ID: {0}", gridMeter.id);
+            }
+            else
+            {
+                logger.LogDebug("There was no grid meter found, this is optional for richer solar monitoring data.");
             }
 
             var battery = devices.Where(device => device.devTypeId == 39).FirstOrDefault();
@@ -556,7 +572,7 @@ namespace HuaweiSolar
                             }
 
                             // If there is a Power Sensor device enrich the ChargeHQ Push Data with the consumption meter fields
-                            if (PowerSensor != null)
+                            if (PowerSensor != null && HuaweiSettings.UsePowerSensorData)
                             {
                                 var powerSensorRequestParam = new GetDevRealKpiRequest
                                 {
@@ -606,8 +622,54 @@ namespace HuaweiSolar
                                     }
                                 }
                             }
+                            else
+                            {
+                                // If there isn't a Power Sensor try use a Grid Meter if it exists to get this data
+                                if (GridMeter != null && HuaweiSettings.UseGridMeterData)
+                                {
+                                    var gridMeterRequestParams = new GetDevRealKpiRequest
+                                    {
+                                        devIds = GridMeter.id.ToString(),
+                                        devTypeId = GridMeter.devTypeId
+                                    };
+                                    var gridMeterData = PostDataRequestAsync<DevRealKpiResponse<DevRealKpiGridMeterDataItemMap>>(GetUri(Constants.DEV_REAL_KPI_URI), 
+                                                                                        Utility.GetStringContent(gridMeterRequestParams),
+                                                                                        CancellationTokenSource.Token).GetAwaiter().GetResult();
+                                    if (gridMeterData != null && gridMeterData.success && 
+                                        gridMeterData.data != null && gridMeterData.data.Count > 0)
+                                    {
+                                        var gridMeterPowerData = gridMeterData.data[0].dataItemMap as DevRealKpiGridMeterDataItemMap;
 
-                            if (Battery != null)
+                                        if (gridMeterPowerData.active_power.HasValue)
+                                        {
+                                            pushData.siteMeters.net_import_kw = -1 * gridMeterPowerData.active_power.Value;
+                                            pushData.siteMeters.consumption_kw = pushData.siteMeters.production_kw - gridMeterPowerData.active_power.Value;
+
+                                            // With the Power Sensor it measures the amount of power exported/imported a positive active_cap will be exported
+                                            if (gridMeterPowerData.active_cap.HasValue && gridMeterPowerData.active_cap > 0)
+                                            {
+                                                pushData.siteMeters.exported_kwh = gridMeterPowerData.active_cap; // this is the lifetime amount of energy exported
+                                            }                                            
+                                        }
+                                    }
+                                    else 
+                                    {
+                                        logger.LogWarning("The grid meter power data returned from Huawei's Fusion Solar was not valid.");
+                                        bool sentErrorDataSuccess = this.chargeHqSender.SendErrorData("Huawei's FusionSolar grid meter power data was not in an expected format.")
+                                                                                                    .GetAwaiter().GetResult();
+                                        if (sentErrorDataSuccess)
+                                        {
+                                            logger.LogDebug("Sent the error data successfully to ChargeHQ.");
+                                        }
+                                        else
+                                        {
+                                            logger.LogError("Failed to send the error data to ChargeHQ.");
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (Battery != null && HuaweiSettings.UseBatteryData)
                             {
                                 var batteryReqestParams = new GetDevRealKpiRequest
                                 {
