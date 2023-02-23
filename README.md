@@ -1,3 +1,5 @@
+_**NOTE:** I've created a new project over [here](https://github.com/danwale/SolarUseOptimiser) for any developers interested in creating their own integrations with other solar systems, it's based on this but I've decoupled it quite a bit so that you can easily implement an IDataSource and configure it as a route for data to be retrived from and pushed onto ChargeHQ (or another target if you want to implement the IDataTarget interface)_. Added a few extra brands like Growatt and IoTaWatt as examples of how it can be extended. **I will also keep this project active and updated as it shares most of the same code.**
+
 # Huawei Fusion Solar to ChargeHQ Push API Integration Module
 
 [![Docker Image CI](https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/actions/workflows/docker-image.yml/badge.svg?branch=main)](https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/actions/workflows/docker-image.yml)
@@ -5,6 +7,8 @@
 [![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/danwale?country.x=AU&locale.x=en_AU) <a href="https://www.buymeacoffee.com/danwale" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 20px !important;width: 105px !important;" ></a>
 
 The intention of this integration is to poll the Huawei Fusion Solar API to determine how much solar power is being generated and provide this to ChargeHQ's Push API that will enable ChargeHQ to regulate the charge rate of a Tesla car to maximise the use of solar energy rather than grid supplied power.
+
+
 
 If you have power sensor devices or grid meter devices, and/or Huawei batteries in your solar setup it is able to pull data from those devices to help send more accurate information onto ChargeHQ to make more informed decisions on the charging. If a Power Sensor exists it will use that over a Grid Meter, if you wish to just use the inverters production data and manage the buffer of "excess" solar power the premises needs you can turn off the extra data sources with toggles in the settings (they default to being enabled with a value of true). This extra functionality hasn't been tested extensively by myself because I don't have these devices in my setup but I've looked at the values from a user for a number of the device types and think this should work, let me know if it doesn't work for you and we can work together to get it fixed. There is no need to turn off the functionality if you don't have the devices, the software is smart enough to detect the devices the system has available to it.
 
