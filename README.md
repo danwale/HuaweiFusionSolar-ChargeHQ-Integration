@@ -17,6 +17,8 @@ This service is only needed while ChargeHQ doesn't support Huawei inverters dire
 
 ## How to get a Huawei Username and Password
 
+**NOTE: Here is a link to the quick guide I created for Solar Installation Company Administrators for setting up the required account, pass this on to them when requesting an API account to be created and it will help them work it out: [https://docs.google.com/document/d/1CPSxU-R0Q7v-KS9JHkhtHh26cX2OEBGZELblLz13lE4/edit?usp=sharing](https://docs.google.com/document/d/1CPSxU-R0Q7v-KS9JHkhtHh26cX2OEBGZELblLz13lE4/edit?usp=sharing).**
+
 In late 2022 Huawei changed the process for getting access to the API's, it now requires you to request an API account from the company that installed your Huawei solar system as the installer now has the responsiblity to create what they call a Northbound API Account that would be used. The limitation on the Huawei system is each installer company can only create a maximum of 5 of these Northbound API Accounts as it's intended that they are used by an integration point rather than individual users. To faciliate this shortcoming it's best to ask the installer to create a Northbound API Account for their entire company that will be shared by all users, this software will only pull the information relevant to the specific station/plant that is named in the configuration.
 
 I'll prepare a document detailing how to setup a Northbound API Account for sending onto your installer in case they haven't seen this new functionality before and help guide them through the process. Things they'll need to setup for their account are:
