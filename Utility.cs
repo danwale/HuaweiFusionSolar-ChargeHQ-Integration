@@ -38,8 +38,17 @@ namespace HuaweiSolar
                 {
                     json = GetJsonResponse(message, cancellationToken);
                     Log.Logger.Debug("JSON Response Content: '{0}'", json);
+                    var wasSuccessResponse = JsonConvert.DeserializeObject<BaseResponse>(json);
+                    if (wasSuccessResponse != null && !wasSuccessResponse.success) 
+                    {
+                        response = Activator.CreateInstance<T>();
+                        response.failCode = wasSuccessResponse.failCode;
+                        response.message = wasSuccessResponse.message;
+                        response.buildCode = wasSuccessResponse.buildCode;
+                        return false;
+                    }
                     response = JsonConvert.DeserializeObject<T>(json);
-                    if (response != null) 
+                    if (response != null)
                     {
                         return response.success;
                     }
