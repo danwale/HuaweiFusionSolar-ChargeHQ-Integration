@@ -610,6 +610,14 @@ namespace HuaweiSolar
                                 else 
                                 {
                                     logger.LogWarning("The power sensor power data returned from Huawei's Fusion Solar was not valid.");
+                                    if (powerSensorData != null && !string.IsNullOrWhiteSpace(powerSensorData.message)) 
+                                    {
+                                        logger.LogWarning("The message returned was: {0} and the failcode: {1}", powerSensorData.message, powerSensorData.failCode);
+                                    }
+                                    else if (powerSensorData != null && powerSensorData.failCode > 0) 
+                                    {
+                                        logger.LogWarning("The message was null but the failCode was: {0}", powerSensorData.failCode);
+                                    }
                                     bool sentErrorDataSuccess = this.chargeHqSender.SendErrorData("Huawei's FusionSolar power sensor power data was not in an expected format.")
                                                                                                 .GetAwaiter().GetResult();
                                     if (sentErrorDataSuccess)
