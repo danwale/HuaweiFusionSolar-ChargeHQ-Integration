@@ -17,11 +17,11 @@ This service is only needed while ChargeHQ doesn't support Huawei inverters dire
 
 ## How to get a Huawei Username and Password
 
-**NOTE: Here is a link to the quick guide I created for Solar Installation Company Administrators for setting up the required account, pass this on to them when requesting an API account to be created and it will help them work it out: [https://docs.google.com/document/d/1CPSxU-R0Q7v-KS9JHkhtHh26cX2OEBGZELblLz13lE4/edit?usp=sharing](https://docs.google.com/document/d/1CPSxU-R0Q7v-KS9JHkhtHh26cX2OEBGZELblLz13lE4/edit?usp=sharing).**
+**NOTE: Here is a link to the quick guide I created for Solar Installation Company Administrators for setting up the required account, pass this on to them when requesting an API account to be created and it will help them work it out: [https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/blob/main/docs/Huawei%20FusionSolar%20Northbound%20API%20Account%20Procedures.pdf](https://github.com/danwale/HuaweiFusionSolar-ChargeHQ-Integration/blob/main/docs/Huawei%20FusionSolar%20Northbound%20API%20Account%20Procedures.pdf).**
 
 In late 2022 Huawei changed the process for getting access to the API's, it now requires you to request an API account from the company that installed your Huawei solar system as the installer now has the responsiblity to create what they call a Northbound API Account that would be used. The limitation on the Huawei system is each installer company can only create a maximum of 5 of these Northbound API Accounts as it's intended that they are used by an integration point rather than individual users. To faciliate this shortcoming it's best to ask the installer to create a Northbound API Account for their entire company that will be shared by all users, this software will only pull the information relevant to the specific station/plant that is named in the configuration.
 
-I'll prepare a document detailing how to setup a Northbound API Account for sending onto your installer in case they haven't seen this new functionality before and help guide them through the process. Things they'll need to setup for their account are:
+I've prepared a document (linked above) detailing how to setup a Northbound API Account for sending onto your installer in case they haven't seen this new functionality before and help guide them through the process. Things they'll need to setup for their account are:
 
 - **System Name**: This is a globally unique name for the Northbound API Account being created, I suggest they include their company name initials in the name to help achieve this, e.g. if the company was called _**The Best Solar Firm**_ they'd use the System Name _**TBSF_ChargeHQ_Poller**_. If the name is taken when they try to save/create the new account it will show a dialog informing them that the System Name is already in use.
 - **Username**: Again this is globally unique so they should use a similar technique for naming the username, using the sample company name above they might use _**TBSFChargeHQ**_.
@@ -48,7 +48,6 @@ services:
       - HUAWEI__USERNAME= #insert the username Huawei or your installer have provided
       - HUAWEI__PASSWORD= #insert the system code/password Huawei or your installer have issued
       - HUAWEI__STATIONNAME= #insert the plant/station name here
-      - HUAWEI__POLLRATE=5 #in minutes (Huawei have a limit of once every 5 minutes)
       - HUAWEI__USEPOWERSENSORDATA= #true or false value, if a power sensor is present should its data be collected and passed on
       - HUAWEI__USEGRIDMETERDATA= #true or false value, if a grid meter is present should its data be collected and passed on
       - HUAWEI__USEBATTERYDATA= #true or false value, if a battery is present should its data be collected and passed on
@@ -92,7 +91,6 @@ You can configure the entire service using environment variables as shown above,
         "Username":"<Username Here>",
         "Password": "<System Code/Password Here>",
         "StationName": "<Station Name Here>",
-        "PollRate": 5,
         "UsePowerSensorData": true,
         "UseGridMeterData": true,
         "UseBatteryData": true
