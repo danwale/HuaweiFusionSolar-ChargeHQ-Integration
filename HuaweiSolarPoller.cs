@@ -115,18 +115,22 @@ namespace HuaweiSolar
                 Timer.AutoReset = true;
                 Timer.Elapsed += PollGenerationStatistics_Elapsed;
 
-                var cookies = new CookieContainer();
-                _handler = new HttpClientHandler();
-                _handler.CookieContainer = cookies;
-                _handler.ClientCertificateOptions = ClientCertificateOption.Manual;
-                _handler.ServerCertificateCustomValidationCallback = (httpRequestMessage, cert, certChain, policyErrors) =>
-                {
-                    return true;
-                };
-                _client = new HttpClient(_handler);
                 HuaweiPollerInititalised = await AuthenticateHuaweiAPI();
             }
             return this;
+        }
+
+        private void CreateHttpClient()
+        {
+            var cookies = new CookieContainer();
+            _handler = new HttpClientHandler();
+            _handler.CookieContainer = cookies;
+            _handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+            _handler.ServerCertificateCustomValidationCallback = (httpRequestMessage, cert, certChain, policyErrors) =>
+            {
+                return true;
+            };
+            _client = new HttpClient(_handler);
         }
 
         private async Task<bool> AuthenticateHuaweiAPI()
@@ -381,6 +385,7 @@ namespace HuaweiSolar
         {
             if (initialised)
             {
+                CreateHttpClient();
                 LoginCredentialRequest lcr = new LoginCredentialRequest
                 {
                     userName = HuaweiSettings.Username,
@@ -427,7 +432,7 @@ namespace HuaweiSolar
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     bool success = Utility.WasSuccessMessage<T>(response, out string json, out T responseObj, cancellationToken);
-                    if (success && responseObj.failCode == 305)
+                    if (!success && responseObj.failCode == 305)
                     {
                         success = await GetXsrfToken(cancellationToken);
                         if (success)
@@ -574,6 +579,11 @@ namespace HuaweiSolar
                             // If there is a Power Sensor device enrich the ChargeHQ Push Data with the consumption meter fields
                             if (PowerSensor != null && HuaweiSettings.UsePowerSensorData)
                             {
+                                // bool reauthed = GetXsrfToken(CancellationTokenSource.Token).GetAwaiter().GetResult();
+                                // if (reauthed)
+                                // {
+                                //     logger.LogDebug("Successfully re-authenticated the user.");
+                                // }
                                 var powerSensorRequestParam = new GetDevRealKpiRequest
                                 {
                                     devIds = PowerSensor.id.ToString(),
