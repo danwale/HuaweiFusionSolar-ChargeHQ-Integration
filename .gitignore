@@ -39,3 +39,4 @@ artifacts/
 [Bb]in/
 [Oo]bj/
 .vscode/settings.json
+.env.*

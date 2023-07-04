@@ -71,6 +71,11 @@ namespace HuaweiSolar
             get; set;
         }
 
+        private int DeviceCount
+        {
+            get; set;
+        } = 0;
+
         private Timer Timer
         {
             get; set;
@@ -110,7 +115,7 @@ namespace HuaweiSolar
                     ChargeHQApiKey = ChargeHQSettings.ApiKey.Value.ToString();
                 }
 
-                Timer = new Timer(HuaweiSettings.PollRate * 60000);
+                Timer = new Timer(HuaweiSettings.PollRate * 61000); //add a bit extra on to ensure it's greater than 5 minutes
                 Timer.Enabled = false;
                 Timer.AutoReset = true;
                 Timer.Elapsed += PollGenerationStatistics_Elapsed;
@@ -163,13 +168,17 @@ namespace HuaweiSolar
                                 if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
                                     bool foundInverter = SetDeviceInfos(deviceInfoResponse.data);
-                                    if (!foundInverter)
-                                    {
-                                        return false;
-                                    }
+                                    return foundInverter;
+                                }
+                                else
+                                {
+                                    return false;
                                 }
                             }
-                            return true;
+                            else
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
@@ -206,13 +215,17 @@ namespace HuaweiSolar
                                 if (deviceInfoResponse.data != null && deviceInfoResponse.data.Count > 0)
                                 {
                                     bool foundInverter = SetDeviceInfos(deviceInfoResponse.data);
-                                    if (!foundInverter)
-                                    {
-                                        return false;
-                                    }
+                                    return foundInverter;
+                                }
+                                else
+                                {
+                                    return false;
                                 }
                             }
-                            return true;
+                            else
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
@@ -290,6 +303,10 @@ namespace HuaweiSolar
                 // If the setup has a power sensor use that for the accurate excess solar information
                 PowerSensor = powerSensor;
                 logger.LogDebug("Found a power sensor with ID: {0}", powerSensor.id);
+                if (HuaweiSettings.UsePowerSensorData)
+                {
+                    DeviceCount++;
+                }
             }
             else
             {
@@ -301,6 +318,10 @@ namespace HuaweiSolar
             {
                 GridMeter = gridMeter;
                 logger.LogDebug("Found a grid meter with ID: {0}", gridMeter.id);
+                if (HuaweiSettings.UseGridMeterData)
+                {
+                    DeviceCount++;
+                }
             }
             else
             {
@@ -312,6 +333,10 @@ namespace HuaweiSolar
             {
                 Battery = battery;
                 logger.LogDebug("Found a residential battery with ID: {0}", battery.id);
+                if (HuaweiSettings.UseBatteryData)
+                {
+                    DeviceCount++;
+                }
             }
             else
             {
@@ -323,6 +348,7 @@ namespace HuaweiSolar
             {
                 Inverter = residentialInverter;
                 logger.LogDebug("Found a residential inverter with ID: {0}", residentialInverter.id);
+                DeviceCount++;
             }
             else
             {
@@ -331,6 +357,7 @@ namespace HuaweiSolar
                 {
                     Inverter = stringInverter;
                     logger.LogDebug("Found a string inverter with ID: {0}", stringInverter.id);
+                    DeviceCount++;
                 }
                 else
                 {
@@ -358,8 +385,11 @@ namespace HuaweiSolar
                 logger.LogInformation("Starting Polling. The interval is every {0}ms.", Timer.Interval);
                 Timer.Start();
 
-                //Do first poll manually
-                PollGenerationStatistics_Elapsed(this, null);
+                //Do first poll manually if there is only an inverter being used otherwise wait to prevent API over frequency use
+                if (DeviceCount == 1)
+                {
+                    PollGenerationStatistics_Elapsed(this, null);
+                }
             }
         }
 
@@ -502,9 +532,10 @@ namespace HuaweiSolar
             {
                 if (!CancellationTokenSource.IsCancellationRequested)
                 {
-                    while (!HuaweiPollerInititalised)
+                    if (!HuaweiPollerInititalised)
                     {
                         HuaweiPollerInititalised = AuthenticateHuaweiAPI().GetAwaiter().GetResult();
+                        return; //return to allow another timer run
                     }
 
                     SiteMeterPush pushData = new SiteMeterPush
@@ -579,11 +610,6 @@ namespace HuaweiSolar
                             // If there is a Power Sensor device enrich the ChargeHQ Push Data with the consumption meter fields
                             if (PowerSensor != null && HuaweiSettings.UsePowerSensorData)
                             {
-                                // bool reauthed = GetXsrfToken(CancellationTokenSource.Token).GetAwaiter().GetResult();
-                                // if (reauthed)
-                                // {
-                                //     logger.LogDebug("Successfully re-authenticated the user.");
-                                // }
                                 var powerSensorRequestParam = new GetDevRealKpiRequest
                                 {
                                     devIds = PowerSensor.id.ToString(),

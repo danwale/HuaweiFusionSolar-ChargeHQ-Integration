@@ -27,11 +27,14 @@ namespace HuaweiSolar.Models.Configuration
             get; set;
         }
 
-        // This is the poll rate in minutes, Huawei ask for this to be 5 minutes
+        // This is the poll rate in minutes, Huawei ask for this to be 5 minutes so it's hardcoded to this
         public int PollRate
         {
-            get; set;
-        } = 5;
+            get
+            {
+                return 5;
+            }
+        }
 
         // This will default to true, but if a grid meter is present and a power sensor is not present this can turn on/off the data from the grid meter being queried and used.
         // Note: If a Power Sensor device is present it will be used in favour of the Grid Meter unless UsePowerSensorData is set to false.
