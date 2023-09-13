@@ -106,4 +106,29 @@ You can configure the entire service using environment variables as shown above,
 }
 ```
 
-Happy EV motoring, charging as cleanly (and cheaply) as possible!
+## Non-Technical Users (Running Windows or macOS) Using Docker Desktop
+If Linux and running docker-compose commands or running it on a NAS box isn't your thing and you happen to have a Windows computer that is always turned on when you're charging then you could install [Docker Desktop](https://www.docker.com/products/docker-desktop/) if you haven't already got it installed. Then once you open it you'd use the search functionality in the application to search for **danwale/huaweifusionsolar2chargehq** as the image name.
+
+![Search for image and Click Run](/docs/images/Docker-Desktop-Run-Image.png)
+
+Click the **Run** button next to the search result _(use the latest tag)_.  This will bring up a dialog where you need to expand the Optional settings, give it a container name like **huawei-solar** and add the environment variables needed for it to run with your settings _(it is a double underscore character between the words)_:
+
+- HUAWEI__BASEURI
+- HUAWEI__USERNAME
+- HUAWEI__PASSWORD
+- HUAWEI__STATIONNAME = The Station/Plant Name in Fusion Solar (in the mobile app it;s the Plant name for the inverter device).
+- CHARGEHQ__APIKEY = Your ChargeHQ API Key from the app.
+- SERILOG__MINIMUMLEVEL = Information
+
+ ![Setup Environment Variables and Image Name](/docs/images/Docker-Desktop-Set-Environment-Varialbes.png)
+
+There are other optional environment variables that are explained above the docker-compose.yml sample:
+
+- HUAWEI__USEPOWERSENSORDATA
+- HUAWEI__USEGRIDMETERDATA
+- HUAWEI__USEBATTERYDATA
+- TZ
+
+The docker image will auto restart each time the computer restarts until you stop and delete it from the running Containers list.
+
+**Happy EV motoring, charging as cleanly (and cheaply) as possible!**
